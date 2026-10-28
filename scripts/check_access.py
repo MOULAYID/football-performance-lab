@@ -12,6 +12,20 @@ class AuditError(Exception):
     pass
 
 
+def error_reason(payload, token):
+    """Expose only error fields, redact the supplied credential before truncating."""
+    if not isinstance(payload, dict):
+        return 'Check credentials, subscription, or quota in the dashboard.'
+    detail = payload.get('errors') or payload.get('message') or payload.get('errorCode')
+    if not detail:
+        return 'Check credentials, subscription, or quota in the dashboard.'
+    text = json.dumps(detail, ensure_ascii=False)
+    if token:
+        for secret in (json.dumps(token, ensure_ascii=False)[1:-1], token):
+            text = text.replace(secret, '[REDACTED]')
+    return ''.join(c for c in text if c.isprintable())[:800]
+
+
 def fetch(base, path, header, token, params=None):
     url = base + path
     if params:
@@ -21,7 +35,11 @@ def fetch(base, path, header, token, params=None):
         with urlopen(request, timeout=30) as response:
             payload = json.load(response)
     except HTTPError as exc:
-        raise AuditError(f'HTTP {exc.code}: check credentials, subscription, or rate limit.') from None
+        try:
+            reason = error_reason(json.loads(exc.read(16384)), token)
+        except (ValueError, UnicodeError, OSError):
+            reason = 'Check credentials, subscription, or quota in the dashboard.'
+        raise AuditError(f'{path}: HTTP {exc.code}: {reason}') from None
     except (URLError, TimeoutError, OSError):
         raise AuditError('Network request failed. Check connectivity and retry later.') from None
     except (ValueError, UnicodeError):
@@ -29,8 +47,7 @@ def fetch(base, path, header, token, params=None):
     if not isinstance(payload, dict):
         raise AuditError('Unexpected response structure.')
     if payload.get('errors') or payload.get('errorCode'):
-        # Do not print provider error bodies: they may echo credentials or account details.
-        raise AuditError('Provider reported an error. Check plan access and quota in its dashboard.')
+        raise AuditError(f'{path}: {error_reason(payload, token)}')
     return payload
 
 
