@@ -6,6 +6,7 @@ import duckdb
 import streamlit as st
 
 from performance import render_performance
+from combined import render_combined
 
 from comparison import (APPEARANCES_HELP, COLORS, DEFAULT_METRICS, METRICS,
                         actual_values, bar_figure, display_value, maximum_scores,
@@ -41,7 +42,7 @@ except (duckdb.Error, OSError) as exc:
 
 with st.sidebar:
     st.header('Explore')
-    st.caption('Sidebar filters apply to Players and Compare players. History has its own controls.')
+    st.caption('Sidebar filters apply to Players and Compare players. History and combined periods have their own controls.')
     league = st.selectbox('League', list(LEAGUES), format_func=LEAGUES.get, key='league')
     season = st.selectbox('Season', list(range(2025, 2020, -1)), format_func=lambda y: f'{y}/{str(y+1)[-2:]}', key='season')
     min_minutes = st.number_input('Minimum minutes', min_value=0, max_value=4000, value=900, step=90, key='minutes')
@@ -67,7 +68,7 @@ cols[0].metric('Players matching filters', len(filtered))
 cols[1].metric('Recorded matches', int(cell.match_count))
 cols[2].metric('Matches missing appearances', int(cell.matches_missing_appearances))
 
-explore, compare, history_tab, methodology = st.tabs(['Players', 'Compare players', 'Performance over time', 'Data & methodology'])
+explore, compare, history_tab, period_tab, methodology = st.tabs(['Players', 'Compare players', 'Performance over time', 'Combined period', 'Data & methodology'])
 fields = ['player_name', 'position_snapshot', 'recorded_appearances', 'minutes', 'goals', 'assists', 'goals_per90', 'assists_per90', 'clubs_played_for']
 with explore:
     st.subheader(f'{LEAGUES[league]} · {season}/{str(season+1)[-2:]}')
@@ -146,6 +147,8 @@ with compare:
         st.info('Select players to compare their totals and historical club stints.')
 with history_tab:
     render_performance(players, stints, LEAGUES)
+with period_tab:
+    render_combined(players, stints, coverage, LEAGUES)
 with methodology:
     st.markdown('''Data: publisher-linked [Transfermarkt datasets on Kaggle](https://www.kaggle.com/datasets/davidcariboo/player-scores). This is a local exploratory prototype; underlying redistribution rights remain unresolved.
 
