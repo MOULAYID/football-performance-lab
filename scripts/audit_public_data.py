@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 COMMIT = '8940299c2c56c2c0932d3caf292336f5e1689893'
 TOP5_URL = f'https://raw.githubusercontent.com/m-mahadi/top5-football-dataset/{COMMIT}/data/master/player_seasons.csv'
 TM_BASE = 'https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data/'
+KAGGLE_BASE = 'https://www.kaggle.com/api/v1/datasets/download/davidcariboo/player-scores/'
 LEAGUES = {'ENG-Premier League': ('GB1', 20), 'ESP-La Liga': ('ES1', 20),
            'ITA-Serie A': ('IT1', 20), 'GER-Bundesliga': ('L1', 18),
            'FRA-Ligue 1': ('FR1', 20)}
@@ -164,6 +165,9 @@ def audit_transfermarkt(games, appearances):
     matrix = base_matrix()
     ids = {value[0]: name for name, value in LEAGUES.items()}
     game_map, teams, covered, players = {}, defaultdict(set), defaultdict(set), defaultdict(set)
+    game_teams, game_details = {}, {}
+    appearance_counts, appearance_teams = Counter(), defaultdict(set)
+    wrong_club_rows = 0
     missing, duplicates, seen, orphan = defaultdict(Counter), 0, set(), 0
     for row in games:
         if not {'game_id','competition_id','season','date','home_club_id','away_club_id'}.issubset(row):
@@ -178,6 +182,10 @@ def audit_transfermarkt(games, appearances):
         game_map[gid] = key
         if key not in matrix:
             continue
+        game_teams[gid] = {row['home_club_id'], row['away_club_id']}
+        game_details[gid] = {'game_id': gid, 'competition_id': row['competition_id'],
+                            'season': row['season'], 'date': row['date'],
+                            'home_club_id': row['home_club_id'], 'away_club_id': row['away_club_id']}
         cell = matrix[key]
         cell['rows'] += 1
         teams[key].update([row['home_club_id'],row['away_club_id']])
@@ -199,6 +207,9 @@ def audit_transfermarkt(games, appearances):
         duplicates += identity in seen
         seen.add(identity)
         covered[key].add(gid)
+        appearance_counts[gid] += 1
+        appearance_teams[gid].add(row['player_club_id'])
+        wrong_club_rows += row['player_club_id'] not in game_teams[gid]
         players[key].add(row['player_id'])
         cell = matrix[key]
         cell['appearance_rows'] = cell.get('appearance_rows', 0) + 1
@@ -217,6 +228,10 @@ def audit_transfermarkt(games, appearances):
                         missing_fields=dict(missing[key]))
     return {'source': 'transfermarkt', 'matrix': list(matrix.values()),
             'duplicate_player_game_keys': duplicates, 'orphan_appearance_rows': orphan,
+            'appearance_rows_with_nonparticipating_club': wrong_club_rows,
+            'games_with_fewer_than_22_appearance_rows': sum(0 < appearance_counts[g] < 22 for g in game_teams),
+            'games_with_only_one_appearance_team': sum(len(appearance_teams[g]) == 1 for g in game_teams),
+            'missing_appearance_games': [game_details[g] for g in game_teams if not appearance_counts[g]],
             'limitations': ['Count agreement is not an independent match-list reconciliation.',
                            'No claim of full tournament or trophy coverage.',
                            'Historical club must come from player_club_id, not player_current_club_id.',
@@ -225,7 +240,7 @@ def audit_transfermarkt(games, appearances):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--source', choices=['top5','transfermarkt','all'], default='all')
+    parser.add_argument('--source', choices=['top5','transfermarkt','transfermarkt-kaggle','all'], default='all')
     parser.add_argument('--offline', action='store_true', help='Only inspect files already downloaded')
     parser.add_argument('--data-dir', type=Path, default=ROOT/'data/raw/public_audit')
     parser.add_argument('--output', type=Path, default=ROOT/'data/processed/public_audit/report.json')
@@ -233,8 +248,10 @@ def main():
     report = {'checked_at': datetime.now(timezone.utc).isoformat(), 'sources': {}}
     sources = ['top5','transfermarkt'] if args.source == 'all' else [args.source]
     for source in sources:
+        suffix = '.csv' if source == 'transfermarkt-kaggle' else '.csv.gz'
+        base = KAGGLE_BASE if source == 'transfermarkt-kaggle' else TM_BASE
         spec = {'player_seasons.csv': TOP5_URL} if source == 'top5' else {
-            name: TM_BASE+name for name in ['games.csv.gz','appearances.csv.gz']}
+            name: base+name for name in ['games'+suffix,'appearances'+suffix]}
         entries, usable = {}, True
         for name, url in spec.items():
             path = args.data_dir/source/name
@@ -260,8 +277,8 @@ def main():
                         raise ValueError('Top-five file differs from pinned Git blob; do not mix snapshots.')
                     result['audit'] = audit_top5(read_csv(path))
                 else:
-                    result['audit'] = audit_transfermarkt(read_csv(args.data_dir/source/'games.csv.gz'),
-                                                         read_csv(args.data_dir/source/'appearances.csv.gz'))
+                    result['audit'] = audit_transfermarkt(read_csv(args.data_dir/source/('games'+suffix)),
+                                                         read_csv(args.data_dir/source/('appearances'+suffix)))
                 result['status'] = 'audited'
             except (ValueError, OSError, EOFError, csv.Error) as exc:
                 result.update(status='invalid', error=str(exc))
