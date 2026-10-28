@@ -20,62 +20,39 @@ class ExplorerTests(unittest.TestCase):
         self.env.start()
         self.addCleanup(self.env.stop)
 
-    def test_filters_comparison_and_coverage(self):
+    def test_single_season_unified_comparison(self):
         app = AppTest.from_file(str(APP), default_timeout=15).run()
-        app.selectbox(key='season').set_value(2024).run()
-        app.number_input(key='minutes').set_value(0).run()
+        self.assertEqual([tab.label for tab in app.tabs], ['Players','Compare players','Performance over time','Data & methodology'])
+        self.assertEqual(app.select_slider(key='period_range').value, (2025,2025))
+        app.select_slider(key='period_range').set_value((2024,2024)).run()
+        app.number_input(key='period_minutes').set_value(0).run()
+        app.multiselect(key='period_players').set_value([1,2]).run()
+        tab=app.tabs[1]
         self.assertFalse(app.exception)
-        self.assertTrue(any('lack appearances' in w.value for w in app.warning))
-        app.multiselect(key='players').set_value([1, 2]).run()
+        self.assertEqual(tab.dataframe[1].value['Appearances'].tolist(),['2','1'])
+        self.assertEqual(tab.dataframe[1].value['Assists'].tolist(),['Unavailable','0'])
+        self.assertTrue(any('Period coverage warning' in w.value for w in tab.warning))
+        detail=tab.dataframe[2].value
+        self.assertEqual(sum(int(x) for x in detail.loc[detail.Player=='Transfer Player','Appearances']),2)
+        self.assertFalse(any(x.key=='period_full' for x in app.checkbox))
+        app.radio(key='period_chart').set_value('Radar').run()
+        self.assertTrue(any('unavailable' in w.value for w in app.tabs[1].warning))
+        self.assertEqual(len(app.tabs[1].get('plotly_chart')),0)
+        app.multiselect(key='period_metrics').set_value(['goals','minutes']).run()
+        self.assertTrue(any('at least three' in w.value for w in app.tabs[1].warning))
+        app.multiselect(key='period_metrics').set_value(['goals','minutes','recorded_appearances']).run()
+        self.assertEqual(len(app.tabs[1].get('plotly_chart')),1)
+        colors=app.session_state['period_colors']
+        app.select_slider(key='period_range').set_value((2021,2025)).run()
+        self.assertEqual(app.multiselect(key='period_players').value,[1,2])
+        self.assertEqual(app.multiselect(key='period_metrics').value,['goals','minutes','recorded_appearances'])
+        self.assertEqual(app.radio(key='period_chart').value,'Radar')
+        self.assertEqual(app.session_state['period_colors'],colors)
+        app.select_slider(key='period_range').set_value((2024,2024)).run()
+        self.assertEqual(app.multiselect(key='period_players').value,[1,2])
+        app.selectbox(key='period_position').set_value('Attack').run()
+        self.assertTrue(any('Insufficient reference data' in w.value for w in app.tabs[1].warning))
         self.assertFalse(app.exception)
-        self.assertEqual(len(app.dataframe[1].value), 2)
-        values = app.dataframe[1].value
-        self.assertEqual(values['Appearances'].tolist(), ['2', '1'])
-        self.assertEqual(values['Assists'].tolist(), ['Unavailable', '0'])
-        stints = app.dataframe[2].value
-        self.assertEqual(sum(int(x) for x in stints.loc[stints.Player == 'Transfer Player', 'Appearances']), 2)
-        app.multiselect(key='comparison_metrics').set_value(['goals', 'recorded_appearances', 'minutes']).run()
-        app.radio(key='chart_type').set_value('Radar').run()
-        self.assertFalse(app.exception)
-        self.assertEqual(app.multiselect(key='players').value, [1, 2])
-        self.assertEqual(len(app.get('plotly_chart')), 1)
-        self.assertEqual(app.dataframe[1].value['Valid observations'].tolist(), [2, 2, 2])
-        colors = app.session_state['comparison_colors']
-        app.radio(key='chart_type').set_value('Bars').run()
-        self.assertEqual(len(app.get('plotly_chart')), 3)
-        self.assertEqual(app.session_state['comparison_colors'], colors)
-        self.assertEqual(app.multiselect(key='comparison_metrics').value, ['goals', 'recorded_appearances', 'minutes'])
-        app.multiselect(key='comparison_metrics').set_value([]).run()
-        self.assertTrue(any('Select one or more' in x.value for x in app.info))
-        self.assertEqual(len(app.get('plotly_chart')), 0)
-        app.text_input(key='search').set_value('no such player').run()
-        self.assertFalse(app.exception)
-        self.assertTrue(any('No players' in x.value for x in app.info))
-
-    def test_radar_guardrails_and_search_population(self):
-        app = AppTest.from_file(str(APP), default_timeout=15).run()
-        app.selectbox(key='season').set_value(2024).run()
-        app.number_input(key='minutes').set_value(0).run()
-        app.multiselect(key='players').set_value([1, 2]).run()
-        app.radio(key='chart_type').set_value('Radar').run()
-        self.assertFalse(app.exception)
-        self.assertTrue(any('unavailable' in w.value for w in app.warning))
-        self.assertEqual(len(app.get('plotly_chart')), 0)
-        self.assertTrue(any('Actual values' == h.value for h in app.subheader))
-        app.multiselect(key='comparison_metrics').set_value(['goals', 'minutes']).run()
-        self.assertTrue(any('at least three' in w.value for w in app.warning))
-        app.multiselect(key='comparison_metrics').set_value(['goals', 'minutes', 'recorded_appearances']).run()
-        before = json.loads(app.get('plotly_chart')[0].proto.spec)['data'][0]['r']
-        app.text_input(key='search').set_value('Transfer').run()
-        self.assertFalse(app.exception)
-        self.assertEqual(app.multiselect(key='players').value, [1])
-        self.assertEqual(app.dataframe[1].value['Valid observations'].tolist(), [2, 2, 2])
-        after = json.loads(app.get('plotly_chart')[0].proto.spec)['data'][0]['r']
-        self.assertEqual(before, after)
-        self.assertTrue(any('lack appearances' in w.value for w in app.warning))
-        app.selectbox(key='position').set_value('Attack').run()
-        self.assertTrue(any('Insufficient reference data' in w.value for w in app.warning))
-        self.assertEqual(len(app.get('plotly_chart')), 0)
 
     def test_history_independent_controls_and_missing_seasons(self):
         app = AppTest.from_file(str(APP), default_timeout=15).run()
@@ -100,10 +77,11 @@ class ExplorerTests(unittest.TestCase):
 
     def test_combined_period_controls_and_charts(self):
         app = AppTest.from_file(str(APP), default_timeout=15).run()
+        app.select_slider(key='period_range').set_value((2021,2025)).run()
         app.number_input(key='period_minutes').set_value(0).run()
         app.multiselect(key='period_players').set_value([1,2]).run()
         self.assertFalse(app.exception)
-        tab=app.tabs[3]
+        tab=app.tabs[1]
         self.assertEqual(len(tab.get('plotly_chart')),5)
         self.assertTrue(any('Incomplete season coverage' in w.value for w in tab.warning))
         self.assertEqual(tab.dataframe[0].value['Seasons with records'].tolist(),[1,1])
@@ -112,23 +90,23 @@ class ExplorerTests(unittest.TestCase):
         app.multiselect(key='period_metrics').set_value(['goals','minutes','recorded_appearances']).run()
         app.radio(key='period_chart').set_value('Radar').run()
         self.assertFalse(app.exception)
-        before=json.loads(app.tabs[3].get('plotly_chart')[0].proto.spec)['data'][0]['r']
+        before=json.loads(app.tabs[1].get('plotly_chart')[0].proto.spec)['data'][0]['r']
         app.text_input(key='period_search').set_value('Transfer').run()
         self.assertEqual(app.multiselect(key='period_players').value,[1])
-        after=json.loads(app.tabs[3].get('plotly_chart')[0].proto.spec)['data'][0]['r']
+        after=json.loads(app.tabs[1].get('plotly_chart')[0].proto.spec)['data'][0]['r']
         self.assertEqual(before,after)
         app.text_input(key='search').set_value('nobody').run()
         self.assertEqual(app.multiselect(key='period_players').value,[1])
         app.radio(key='period_chart').set_value('Bars').run()
-        self.assertEqual(len(app.tabs[3].get('plotly_chart')),3)
+        self.assertEqual(len(app.tabs[1].get('plotly_chart')),3)
         app.multiselect(key='period_metrics').set_value([]).run()
-        self.assertEqual(len(app.tabs[3].get('plotly_chart')),0)
+        self.assertEqual(len(app.tabs[1].get('plotly_chart')),0)
         app.checkbox(key='period_full').set_value(True).run()
         self.assertFalse(app.exception)
         self.assertEqual(app.multiselect(key='period_players').value,[])
         app.select_slider(key='period_range').set_value((2024,2024)).run()
         app.multiselect(key='period_players').set_value([1]).run()
-        self.assertEqual(app.tabs[3].dataframe[0].value['Seasons selected'].tolist(),[1])
+        self.assertEqual(app.tabs[1].dataframe[0].value['Seasons selected'].tolist(),[1])
 
     def test_missing_database(self):
         with patch.dict(os.environ, {'FOOTBALL_DB_PATH': str(self.fixture.root / 'absent.duckdb')}):
