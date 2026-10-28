@@ -5,6 +5,10 @@ from pathlib import Path
 import duckdb
 import streamlit as st
 
+from comparison import (APPEARANCES_HELP, COLORS, DEFAULT_METRICS, METRICS,
+                        actual_values, bar_figure, display_value, percentile_scores,
+                        radar_figure, radar_issues, reference_population)
+
 ROOT = Path(__file__).resolve().parent
 DB = Path(os.environ.get('FOOTBALL_DB_PATH', ROOT / 'data/processed/football.duckdb'))
 LEAGUES = {'GB1': 'Premier League', 'ES1': 'La Liga', 'IT1': 'Serie A', 'L1': 'Bundesliga', 'FR1': 'Ligue 1'}
@@ -50,11 +54,10 @@ if cell.matches_with_suspect_coverage:
 subset = players[(players.competition_id == league) & (players.season == season)]
 positions = sorted(subset.position_snapshot.dropna().unique())
 position = st.sidebar.selectbox('Position snapshot', ['All'] + positions, key='position')
-filtered = subset[subset.minutes >= min_minutes]
+reference = reference_population(players, league, season, min_minutes, position)
+filtered = reference
 if search:
     filtered = filtered[filtered.player_name.str.contains(search, case=False, regex=False, na=False)]
-if position != 'All':
-    filtered = filtered[filtered.position_snapshot == position]
 filtered = filtered.sort_values(['goals', 'minutes', 'player_id'], ascending=[False, False, True], na_position='last')
 cols = st.columns(3)
 cols[0].metric('Players matching filters', len(filtered))
@@ -72,21 +75,69 @@ with explore:
         st.dataframe(filtered[fields].round(3), hide_index=True, width='stretch')
 with compare:
     labels = {int(row.player_id): f'{row.player_name} · ID {row.player_id}' for row in filtered.itertuples()}
+    # Only remove invalid selections when filters change, never on chart switches.
+    if 'players' in st.session_state:
+        st.session_state.players = [pid for pid in st.session_state.players if pid in labels]
     chosen = st.multiselect('Choose up to four players from the filtered list', list(labels), format_func=labels.get, max_selections=4, key='players')
+    metrics = st.multiselect('Comparison metrics', list(METRICS), default=DEFAULT_METRICS,
+                             format_func=METRICS.get, key='comparison_metrics')
+    chart_type = st.radio('Chart type', ['Bars', 'Radar'], horizontal=True, key='chart_type')
+    st.caption(APPEARANCES_HELP)
+    st.caption('Appearances count matches played, not starts or unused-bench selections. '
+               'They cover this domestic league only and combine historical club stints within the season.')
+    st.caption('Per 90 = total ÷ minutes played × 90. Zero or unknown minutes give an unavailable rate. '
+               'Rates are not adjusted for position, team strength, penalties or opposition. '
+               'All totals, including appearances, may be incomplete where appearance coverage is missing.')
+    if not metrics:
+        st.info('Select one or more comparison metrics to display charts and values.')
     if chosen:
-        selected = filtered[filtered.player_id.isin(chosen)].copy()
-        st.dataframe(selected[fields].round(3), hide_index=True, width='stretch')
-        metric = st.selectbox('Chart metric', ['goals', 'assists', 'minutes', 'goals_per90', 'assists_per90'], key='metric')
-        selected['label'] = selected.player_name + ' · ' + selected.player_id.astype(str)
-        chart = selected[['label', metric]].dropna(subset=[metric])
-        if len(chart) < len(selected):
-            st.info('Players with missing values for this metric are omitted from the chart.')
-        if not chart.empty:
-            st.bar_chart(chart.set_index('label'), horizontal=True)
-        st.caption('Per-90 values are not adjusted for position, team strength, penalties or opposition.')
+        selected = filtered.set_index('player_id', drop=False).loc[chosen].copy()
+        # Preserve colours for retained players even when selections are edited.
+        colors = {pid: color for pid, color in st.session_state.get('comparison_colors', {}).items() if pid in chosen}
+        for pid in chosen:
+            if pid not in colors:
+                colors[pid] = next(color for color in COLORS if color not in colors.values())
+        st.session_state.comparison_colors = colors
+        if chart_type == 'Bars' and metrics:
+            columns = st.columns(2)
+            for index, metric in enumerate(metrics):
+                with columns[index % 2]:
+                    st.plotly_chart(bar_figure(selected, metric, colors), use_container_width=True,
+                                    key=f'bar_{metric}', config={'displayModeBar': False})
+        elif chart_type == 'Radar':
+            scores, summary = percentile_scores(reference, metrics)
+            st.caption(f'Reference: {LEAGUES[league]} · {season}/{str(season+1)[-2:]} · '
+                       f'minimum {min_minutes} minutes · position: {position} · {len(reference)} players. '
+                       'Name search and comparison selections do not restrict this population. '
+                       'Positions are source snapshots, not verified historical roles.')
+            st.dataframe(summary, hide_index=True, width='stretch')
+            st.caption('Percentile = 100 × (number below + half the number equal) ÷ valid observations. '
+                       'Missing values are excluded separately for each metric; ties share a score. '
+                       'At least two valid observations are required.')
+            issues = radar_issues(selected, metrics, scores, summary)
+            for issue in issues:
+                st.warning(issue)
+            constants = summary.loc[summary.Status.str.startswith('Constant'), 'Metric'].tolist()
+            if constants:
+                st.warning('Constant reference metrics: ' + ', '.join(constants) +
+                           '. All valid values receive 50; these axes do not distinguish players.')
+            if not issues:
+                st.plotly_chart(radar_figure(selected, metrics, scores, colors), use_container_width=True,
+                                key='radar', config={'displayModeBar': False})
+            st.caption('Percentiles describe relative standing, not overall player quality. '
+                       'Minutes and appearances measure participation. Attacking metrics do not fairly '
+                       'summarize defenders or goalkeepers. Related metrics such as goals and goals per 90, '
+                       'or appearances and minutes, can make the profile repetitive. No overall score is calculated.')
+        st.subheader('Actual values')
+        st.dataframe(actual_values(selected, metrics), hide_index=True, width='stretch')
         st.subheader('Historical club stints')
         detail = stints[(stints.competition_id == league) & (stints.season == season) & stints.player_id.isin(chosen)]
-        st.dataframe(detail[['player_name', 'club_name_snapshot', 'recorded_appearances', 'minutes', 'goals', 'assists', 'matches_missing_club_appearances']], hide_index=True, width='stretch')
+        detail = detail[['player_name', 'club_name_snapshot', 'recorded_appearances', 'minutes', 'goals', 'assists', 'matches_missing_club_appearances']].copy()
+        for metric in ['recorded_appearances', 'minutes', 'goals', 'assists']:
+            detail[metric] = detail[metric].map(lambda v, m=metric: display_value(v, m))
+        st.dataframe(detail.rename(columns={'player_name': 'Player', 'club_name_snapshot': 'Club (source snapshot)',
+                                           **METRICS, 'matches_missing_club_appearances': 'Matches missing club appearances'}),
+                     hide_index=True, width='stretch')
     else:
         st.info('Select players to compare their totals and historical club stints.')
 with methodology:
