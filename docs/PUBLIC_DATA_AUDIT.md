@@ -2,7 +2,46 @@
 
 Scope: the five completed seasons 2021/22–2025/26, across the Premier League, La Liga, Serie A, Bundesliga, and Ligue 1. This evaluates published datasets, not live scraping of football websites.
 
-## Observed results — 28 October 2026
+## Kaggle follow-up: download and audit succeeded
+
+On 28 October 2026 the publisher-linked Kaggle distribution was accessible through its normal public API, without credentials. This is a separate authorized distribution, not a workaround for the blocked R2 host. The original R2 failure remains recorded below.
+
+Downloaded `games.csv` (28,965,132 bytes) and `appearances.csv` (198,398,405 bytes). Kaggle's file listing reported creation on 5 September 2026. File publication dates are not football coverage dates. Checksums are recorded in [kaggle_data_audit_2026-10-28.json](kaggle_data_audit_2026-10-28.json).
+
+**Actual row-level results for our scope:**
+- All 25 combinations of five leagues and five completed seasons are present.
+- 8,908 match records; match and distinct-team counts agree with expectations in every combination.
+- 272,457 appearance records in scope.
+- 8,907 matches have appearance records; each of those has both participating clubs and at least 22 player rows.
+- No duplicate player-game keys in scope, no appearance rows linked to the wrong participating club, and no orphan appearance references across the full files.
+- No missing minutes, goals or assists in the in-scope appearance rows. This does not establish the correctness of every value or rule out upstream imputation.
+- One missing match's appearances: Ligue 1 2025/26, game ID `4635303`, listed as Nantes–Toulouse on 17 May 2026. Preserve that gap explicitly; do not fill it with zeros.
+
+| League | Matches across five seasons | Matches lacking appearances |
+|---|---:|---:|
+| Premier League | 1,900 | 0 |
+| La Liga | 1,900 | 0 |
+| Serie A | 1,900 | 0 |
+| Bundesliga | 1,530 | 0 |
+| Ligue 1 | 1,678 | 1 |
+
+Decision: use this as the leading candidate for the basic five-season analytical dataset. This audit establishes strong structural coverage, not independent verification of every fixture, player or metric. Trophies, Ballon d'Or rankings, advanced statistics and public-use permissions remain separate work. Player profiles/positions were not downloaded in this step.
+
+Reproduce the Kaggle audit in Git Bash:
+
+```bash
+git switch setup/data-access-audit
+git pull --ff-only origin setup/data-access-audit
+python scripts/audit_public_data.py --source transfermarkt-kaggle --output data/processed/public_audit/kaggle_report.json
+```
+
+No key or additional packages are needed for the observed public route. Downloads total approximately 227 MB; cached files are reused. `--source all` retains its original behavior (top-five plus R2); select `transfermarkt-kaggle` explicitly. Downloads remain local and ignored by Git. If Kaggle later denies access or requires authentication, the script stops rather than bypassing restrictions.
+
+The current tool reports per-match partial-appearance warnings as well as completely missing matches. 17 offline tests pass, including plain-CSV Kaggle routing, no-network cache reuse, and missing-match/wrong-club flags.
+
+Next implementation: preserve the match-level source, derive player/team/competition/season aggregates using historical `player_club_id`, add player/club reference tables, and carry the one-match coverage gap into the dashboard. Keep underlying data-use review and the 20-player comparison pending; this audit does not resolve them.
+
+## Initial results — 28 October 2026
 
 The top-five dataset was downloaded successfully and audited using `scripts/audit_public_data.py`. The Transfermarkt published download returned HTTP 403 from the execution environment, so row-level coverage remains unverified. This does not prove the same download will fail on a local computer.
 
