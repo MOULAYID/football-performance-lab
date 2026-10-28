@@ -19,3 +19,22 @@ The app reads `data/processed/football.duckdb`. To use another database, set `FO
 [Database model](DATABASE.md) · [Independent sample checks](SAMPLE_VALIDATION.md)
 
 Test with `python -m unittest discover -s tests -v`. Streamlit's AppTest exercises the app without a browser. The fixture tests cover filtering, player selection, missing database guidance and coverage warnings; they do not replace visual browser inspection.
+
+## Python compatibility and isolated setup
+
+Use Python 3.12 for this pinned stack. The earlier Python 3.10+ description was too broad: Altair 5.5 can fail on Python 3.14 with `_TypedDictMeta.__new__() got an unexpected keyword argument 'closed'` (https://github.com/vega/altair/issues/3874). Updating typing-extensions alone does not repair Altair choosing the standard-library TypedDict on that runtime.
+
+Stop Streamlit. In Git Bash, check `python --version` and `py -0p`. If necessary, install Python 3.12 from python.org. Create a separate environment without deleting the existing one:
+
+```bash
+deactivate
+py -3.12 -m venv .venv312
+source .venv312/Scripts/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip check
+python -c "import altair; print(altair.__version__)"
+python -m streamlit run app.py
+```
+
+Skip `deactivate` if no environment is active. This preserves downloaded data and the database. In future terminals use `source .venv312/Scripts/activate`. Verified locally: Python 3.12.14, Altair 5.5.0 and typing-extensions 4.16.0 import and serialize a bar chart successfully. Windows execution remains to be confirmed on the user's machine.
