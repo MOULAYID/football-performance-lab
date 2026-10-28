@@ -1,1 +1,2 @@
 duckdb==1.4.3
+streamlit==1.50.0
