@@ -13,7 +13,7 @@ except ImportError:
 FILES = ('games','appearances','players','clubs','competitions')
 
 
-def build_database(data_dir, output):
+def build_database(data_dir, output, *, memory_limit='1GB', threads=2):
     import duckdb
     data_dir, output = Path(data_dir), Path(output)
     for name in FILES:
@@ -25,8 +25,8 @@ def build_database(data_dir, output):
         pending = Path(tmp)/'football.duckdb'
         con = duckdb.connect(str(pending))
         try:
-            con.execute("SET memory_limit='1GB'")
-            con.execute('SET threads=2')
+            con.execute("SET memory_limit = ?", [memory_limit])
+            con.execute('SET threads = ?', [threads])
             for name in FILES:
                 con.execute(f'CREATE TEMP TABLE raw_{name} AS SELECT * FROM read_csv(?, header=true, all_varchar=true)',
                             [str(data_dir/f'{name}.csv')])
