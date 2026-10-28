@@ -47,3 +47,28 @@ References:
 - https://docs.football-data.org/general/v4/lookup_tables.html
 - https://www.api-football.com/terms
 - https://www.football-data.org/about
+
+## Verified access and full local import
+
+The user's access audit confirmed Premier League 2024/25 player access (league 39, season 2024). The free plan rejected season 2025 and reported an allowed range of 2022–2024. The first page had 20 player records, 21 matching statistic rows and 57 total pages. These are observed sample results, not a completeness guarantee.
+
+From Git Bash, after updating this branch:
+
+```bash
+python scripts/import_players.py --league 39 --season 2024
+```
+
+No packages are required. The importer prompts for the direct API-Football key, spaces new requests seven seconds apart, and defaults to at most 35 new requests per invocation. Check your dashboard's remaining quota first and lower the cap with `--max-requests 10` if needed. The cap does not measure your remaining daily allowance. Other tools and earlier audits also consume quota.
+
+Repeat the same command to resume. Completed pages are read from the local cache without new requests. With 57 pages and a 35-request cap, two runs are needed (35 then 22 requests), provided your quota allows it. The previous access check did not cache its sample, so page 1 is fetched again.
+
+Outputs (ignored by Git):
+- `data/raw/api-football_39_2024_initial/`: dated page snapshots.
+- `data/processed/api-football_39_2024_initial/players.csv`: validated player/team/league/season records.
+- `data/processed/api-football_39_2024_initial/quality_report.json`: counts and missing-field summary.
+
+CSV empty cells represent nulls; zeros are retained. Multiple teams for the same player remain separate. Identical repeated statistic rows are deduplicated and counted; conflicting rows or repeated players across pages stop the export. Every player must have at least one matching league-season statistic row.
+
+If the provider changes pagination during a download, the importer stops. Use a new name, e.g. `--snapshot refresh1`, to start a separate download without deleting the old cache. Do not run multiple importers against the same snapshot concurrently. A complete pagination download is not proof of complete real-world coverage; updates during download can still cause omissions that require independent reconciliation.
+
+The importer has offline fixture tests, but a full live download has not yet been verified. Share the final quality report rather than raw player data. Next: inspect null semantics, reconcile team coverage, then build DuckDB tables and the Streamlit explorer.
