@@ -111,3 +111,7 @@ Before consolidation, combined-period validation passed 38 tests in the full sui
 The comparison tabs are now consolidated: navigation is Players, Compare players, Performance over time, and Data & methodology. Sidebar controls and browsing counts/warnings belong only to Players. Comparison controls remain inside Compare players; history controls remain separate. Valid player/metric selections, chart type and colours survive changes between one and several seasons. Invalid player selections are removed when filters make them ineligible. The every-season checkbox appears only for multi-season ranges. Comparisons always share one league and period; different player-specific periods are not supported.
 
 Consolidation validation: 37 tests pass after consolidating duplicate comparison UI tests. Automated real-data checks passed for 20 views (five leagues × single-season/five-season ranges × Bars/Radar). Visual browser inspection remains pending. No dependencies or database rebuild are required.
+
+## Sidebar goals and assists filters
+
+Players can be filtered by minimum goals and minimum assists within the sidebar-selected league and season. Both conditions apply together, alongside existing filters. Both inputs start blank (disabled); clearing an input disables it again. Setting a threshold, including zero, excludes unknown values for that metric without converting missing data into zero. The matching-player count updates accordingly. These browsing filters do not affect Compare players, radar reference populations or Performance over time.

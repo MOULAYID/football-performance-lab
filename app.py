@@ -44,6 +44,13 @@ with st.sidebar:
     league = st.selectbox('League', list(LEAGUES), format_func=LEAGUES.get, key='league')
     season = st.selectbox('Season', list(range(2025, 2020, -1)), format_func=lambda y: f'{y}/{str(y+1)[-2:]}', key='season')
     min_minutes = st.number_input('Minimum minutes', min_value=0, max_value=4000, value=900, step=90, key='minutes')
+    min_goals = st.number_input('Minimum goals', min_value=0, value=None, step=1,
+                                placeholder='No minimum', key='min_goals',
+                                help='Season goals in the selected league. Clear to disable. Unknown goals are excluded when a minimum is set.')
+    min_assists = st.number_input('Minimum assists', min_value=0, value=None, step=1,
+                                  placeholder='No minimum', key='min_assists',
+                                  help='Season assists in the selected league. Clear to disable. Unknown assists are excluded when a minimum is set.')
+    st.caption('Goals and assists filters apply together. Leave either blank to disable it.')
     search = st.text_input('Player name', key='search')
     st.caption('Positions describe the source snapshot, not necessarily the player’s role in this season.')
 
@@ -54,6 +61,10 @@ positions = sorted(subset.position_snapshot.dropna().unique())
 position = st.sidebar.selectbox('Position snapshot', ['All'] + positions, key='position')
 reference = reference_population(players, league, season, min_minutes, position)
 filtered = reference
+if min_goals is not None:
+    filtered = filtered[filtered.goals >= min_goals]
+if min_assists is not None:
+    filtered = filtered[filtered.assists >= min_assists]
 if search:
     filtered = filtered[filtered.player_name.str.contains(search, case=False, regex=False, na=False)]
 filtered = filtered.sort_values(['goals', 'minutes', 'player_id'], ascending=[False, False, True], na_position='last')
@@ -73,7 +84,7 @@ with explore:
     st.subheader(f'{LEAGUES[league]} · {season}/{str(season+1)[-2:]}')
     st.caption('League totals include all clubs played for within this competition. Missing metrics remain blank. Players with unknown minutes are excluded by the minutes filter.')
     if filtered.empty:
-        st.info('No players match these filters. Lower the minutes threshold or clear the name filter.')
+        st.info('No players match these filters. Lower or clear the goals/assists minimums, lower the minutes threshold, or adjust the name and position filters.')
     else:
         st.dataframe(filtered[fields].round(3), hide_index=True, width='stretch')
 with compare:
