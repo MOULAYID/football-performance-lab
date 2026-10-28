@@ -1,4 +1,4 @@
-"""Comparison filtering, midrank percentiles and Python-only Plotly figures."""
+"""Comparison filtering, maximum-relative scaling and Python-only Plotly figures."""
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -21,24 +21,27 @@ def reference_population(players, league, season, min_minutes, position='All'):
     return players.loc[mask].copy()
 
 
-def percentile_scores(reference, metrics):
-    """Midrank: 100 * (count below + 0.5 * count equal) / valid count.
+def maximum_scores(reference, metrics):
+    """Scale nonnegative metrics against the full reference maximum.
 
-    Missing values are excluded per metric. Fewer than two observations yield
-    unavailable scores; constant populations of size >=2 yield 50 for everyone.
+    Missing values stay missing. All-zero metrics have no defined denominator
+    and block the radar. Positive constants receive 100 with an explicit warning.
     """
     scores = pd.DataFrame(index=reference.player_id)
     summary = []
     for metric in metrics:
         values = reference.set_index('player_id')[metric]
         n = int(values.notna().sum())
+        maximum = values.max()
         constant = n >= 2 and values.nunique() == 1
-        scores[metric] = (100 * (values.rank(method='average') - 0.5) / n
-                          if n >= 2 else float('nan'))
+        scores[metric] = (100 * values / maximum
+                          if n >= 2 and maximum > 0 else float('nan'))
         summary.append({'Metric': METRICS[metric], 'Valid observations': n,
+                        'Reference maximum': display_value(maximum, metric),
                         'Status': 'Insufficient data' if n < 2 else
-                        'Constant: all valid values receive 50' if constant else 'Available'})
-    return scores, pd.DataFrame(summary, columns=['Metric', 'Valid observations', 'Status'])
+                        'Zero maximum: scaling unavailable' if maximum == 0 else
+                        'Constant: all valid values receive 100' if constant else 'Available'})
+    return scores, pd.DataFrame(summary, columns=['Metric', 'Valid observations', 'Reference maximum', 'Status'])
 
 
 def radar_issues(selected, metrics, scores, summary):
@@ -54,6 +57,10 @@ def radar_issues(selected, metrics, scores, summary):
     if insufficient:
         issues.append('Insufficient reference data (at least two valid observations required): '
                       + ', '.join(insufficient) + '. Adjust filters or switch to Bars.')
+    zero_max = summary.loc[summary.Status.str.startswith('Zero maximum'), 'Metric'].tolist()
+    if zero_max:
+        issues.append('Zero reference maximum: ' + ', '.join(zero_max) +
+                      '. All recorded values are zero; remove these metrics or switch to Bars.')
     if not selected.empty and not set(selected.player_id).issubset(scores.index):
         issues.append('Selected players must belong to the reference population.')
     return issues
@@ -112,10 +119,25 @@ def radar_figure(selected, metrics, scores, colors):
             name=player_label(row), mode='lines+markers', fill='toself',
             line=dict(color=color), fillcolor=f'rgba({rgb},0.10)',
             customdata=raw + raw[:1],
-            hovertemplate='%{theta}<br>Actual: %{customdata}<br>Percentile: %{r:.1f}<extra>%{fullData.name}</extra>',
+            hovertemplate='%{theta}<br>Actual: %{customdata}<br>Reference maximum share: %{r:.1f}%<extra>%{fullData.name}</extra>',
         ))
-    fig.update_layout(height=540, margin=dict(l=70, r=70, t=50, b=100),
-                      polar=dict(radialaxis=dict(range=[0, 100], tickvals=[0, 25, 50, 75, 100]),
-                                 angularaxis=dict(categoryorder='array', categoryarray=labels)),
-                      legend=dict(orientation='h', y=-0.18))
+    # Own the complete panel palette; Streamlit's theme otherwise leaves the
+    # polar background white while changing text to white in dark mode.
+    fig.update_layout(
+        template='plotly_dark', height=570,
+        paper_bgcolor='#111827', plot_bgcolor='#111827',
+        font=dict(color='#F3F4F6', size=14),
+        margin=dict(l=90, r=90, t=65, b=95),
+        title=dict(text='Percentage of reference maximum', x=0.5, xanchor='center'),
+        polar=dict(bgcolor='#111827',
+                   radialaxis=dict(range=[0, 100], tickvals=[0, 25, 50, 75, 100],
+                                   ticksuffix='%', angle=15, tickfont=dict(color='#D1D5DB', size=12),
+                                   gridcolor='#4B5563', linecolor='#6B7280'),
+                   angularaxis=dict(categoryorder='array', categoryarray=labels,
+                                    tickfont=dict(color='#F3F4F6', size=14),
+                                    gridcolor='#4B5563', linecolor='#6B7280')),
+        legend=dict(orientation='h', x=0.5, xanchor='center', y=-0.12, yanchor='top',
+                    font=dict(color='#F3F4F6', size=13)),
+        hoverlabel=dict(bgcolor='#1F2937', font_color='#F9FAFB'),
+    )
     return fig

@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 
 from comparison import (COLORS, METRICS, actual_values, bar_figure,
-                        percentile_scores, radar_figure, radar_issues,
+                        maximum_scores, radar_figure, radar_issues,
                         reference_population)
 
 
@@ -25,27 +25,27 @@ class ComparisonTests(unittest.TestCase):
         self.players.loc[0, 'minutes'] = None
         self.assertEqual(reference_population(self.players, 'GB1', 2024, 0).player_id.tolist(), [2, 3])
 
-    def test_midrank_ties_missing_and_constants(self):
+    def test_maximum_scaling_ties_missing_and_constants(self):
         ref = self.players.iloc[:3]
-        scores, summary = percentile_scores(ref, ['goals', 'assists', 'recorded_appearances'])
-        self.assertAlmostEqual(scores.loc[1, 'goals'], 100 / 6)
-        self.assertAlmostEqual(scores.loc[2, 'goals'], 200 / 3)
+        scores, summary = maximum_scores(ref, ['goals', 'assists', 'recorded_appearances'])
+        self.assertAlmostEqual(scores.loc[1, 'goals'], 0)
+        self.assertAlmostEqual(scores.loc[2, 'goals'], 100)
         self.assertEqual(scores.loc[2, 'goals'], scores.loc[3, 'goals'])
         self.assertTrue(pd.isna(scores.loc[1, 'assists']))
-        self.assertEqual(scores.loc[2, 'assists'], 25)
-        self.assertEqual(scores.loc[3, 'assists'], 75)
-        self.assertEqual(scores.recorded_appearances.tolist(), [50, 50, 50])
+        self.assertEqual(scores.loc[2, 'assists'], 0)
+        self.assertEqual(scores.loc[3, 'assists'], 100)
+        self.assertEqual(scores.recorded_appearances.tolist(), [100, 100, 100])
         self.assertEqual(summary['Valid observations'].tolist(), [3, 2, 3])
 
     def test_insufficient_empty_and_missing_radar(self):
         metrics = ['goals', 'assists', 'recorded_appearances']
         for ref in [self.players.iloc[:0], self.players.iloc[:1]]:
-            scores, summary = percentile_scores(ref, metrics)
+            scores, summary = maximum_scores(ref, metrics)
             self.assertTrue(scores.isna().all().all())
             self.assertTrue(any('Insufficient' in x for x in radar_issues(ref, metrics, scores, summary)))
-        scores, summary = percentile_scores(self.players, metrics)
+        scores, summary = maximum_scores(self.players, metrics)
         self.assertTrue(any('unavailable for A' in x for x in radar_issues(self.players.iloc[:1], metrics, scores, summary)))
-        scores, summary = percentile_scores(self.players, [])
+        scores, summary = maximum_scores(self.players, [])
         self.assertTrue(any('at least three' in x for x in radar_issues(self.players.iloc[:1], [], scores, summary)))
         self.assertEqual(actual_values(self.players.iloc[:1], []).columns.tolist(), ['Player'])
 
@@ -62,7 +62,7 @@ class ComparisonTests(unittest.TestCase):
         self.assertEqual(bar.layout.xaxis.range[0], 0)
         self.assertEqual(bar.layout.annotations[0].text, 'Unavailable')
         metrics = ['goals', 'minutes', 'recorded_appearances']
-        scores, summary = percentile_scores(selected, metrics)
+        scores, summary = maximum_scores(selected, metrics)
         self.assertFalse(radar_issues(selected, metrics, scores, summary))
         radar = radar_figure(selected, metrics, scores, colors)
         for index, trace in enumerate(radar.data):
@@ -75,10 +75,31 @@ class ComparisonTests(unittest.TestCase):
 
     def test_scores_independent_of_search_and_selection(self):
         ref = reference_population(self.players, 'GB1', 2024, 0)
-        scores, _ = percentile_scores(ref, ['goals'])
+        scores, _ = maximum_scores(ref, ['goals'])
         # Search restricts candidates only, never the population passed to scoring.
         candidate = ref[ref.player_name.str.contains('B')]
         self.assertEqual(scores.loc[candidate.player_id.iloc[0], 'goals'], scores.loc[2, 'goals'])
         first = scores.loc[[2], 'goals']
         second = scores.loc[[2, 3], 'goals']
         self.assertEqual(first.loc[2], second.loc[2])
+
+    def test_screenshot_ratio_and_zero_maximum(self):
+        ref = self.players.iloc[:3].copy()
+        ref['goals'] = [27, 15, 30]
+        ref['assists'] = [0, 0, None]
+        scores, summary = maximum_scores(ref, ['goals', 'assists', 'minutes'])
+        self.assertEqual(scores.goals.tolist(), [90, 50, 100])
+        self.assertAlmostEqual(scores.loc[1, 'goals'] / scores.loc[2, 'goals'], 27 / 15)
+        self.assertTrue(scores.assists.isna().all())
+        self.assertTrue(any('Zero reference maximum' in x for x in radar_issues(ref, ['goals', 'assists', 'minutes'], scores, summary)))
+        self.assertEqual(summary.iloc[0]['Reference maximum'], '30')
+        # Selecting only the first two players must retain the third player's maximum.
+        fig = radar_figure(ref.iloc[:2], ['goals', 'minutes', 'recorded_appearances'],
+                           maximum_scores(ref, ['goals', 'minutes', 'recorded_appearances'])[0],
+                           {1: COLORS[0], 2: COLORS[1]})
+        self.assertEqual(fig.data[0].r[0], 90)
+        self.assertEqual(fig.data[1].r[0], 50)
+        self.assertEqual(fig.layout.polar.bgcolor, fig.layout.paper_bgcolor)
+        self.assertEqual(fig.layout.font.color, '#F3F4F6')
+        self.assertEqual(fig.layout.legend.x, 0.5)
+        self.assertIn('Reference maximum', fig.data[0].hovertemplate)

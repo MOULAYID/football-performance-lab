@@ -6,7 +6,7 @@ import duckdb
 import streamlit as st
 
 from comparison import (APPEARANCES_HELP, COLORS, DEFAULT_METRICS, METRICS,
-                        actual_values, bar_figure, display_value, percentile_scores,
+                        actual_values, bar_figure, display_value, maximum_scores,
                         radar_figure, radar_issues, reference_population)
 
 ROOT = Path(__file__).resolve().parent
@@ -105,14 +105,14 @@ with compare:
                     st.plotly_chart(bar_figure(selected, metric, colors), use_container_width=True,
                                     key=f'bar_{metric}', config={'displayModeBar': False})
         elif chart_type == 'Radar':
-            scores, summary = percentile_scores(reference, metrics)
+            scores, summary = maximum_scores(reference, metrics)
             st.caption(f'Reference: {LEAGUES[league]} · {season}/{str(season+1)[-2:]} · '
                        f'minimum {min_minutes} minutes · position: {position} · {len(reference)} players. '
                        'Name search and comparison selections do not restrict this population. '
                        'Positions are source snapshots, not verified historical roles.')
             st.dataframe(summary, hide_index=True, width='stretch')
-            st.caption('Percentile = 100 × (number below + half the number equal) ÷ valid observations. '
-                       'Missing values are excluded separately for each metric; ties share a score. '
+            st.caption('Percentage of reference maximum = 100 × actual value ÷ reference maximum. '
+                       'The maximum uses the full reference population, not just selected players. '
                        'At least two valid observations are required.')
             issues = radar_issues(selected, metrics, scores, summary)
             for issue in issues:
@@ -120,11 +120,12 @@ with compare:
             constants = summary.loc[summary.Status.str.startswith('Constant'), 'Metric'].tolist()
             if constants:
                 st.warning('Constant reference metrics: ' + ', '.join(constants) +
-                           '. All valid values receive 50; these axes do not distinguish players.')
+                           '. All valid values receive 100%; these axes do not distinguish players.')
             if not issues:
                 st.plotly_chart(radar_figure(selected, metrics, scores, colors), use_container_width=True,
-                                key='radar', config={'displayModeBar': False})
-            st.caption('Percentiles describe relative standing, not overall player quality. '
+                                key='radar', theme=None, config={'displayModeBar': False})
+            st.caption('These percentages preserve proportional differences, not percentile ranks or overall quality. '
+                       'Extreme reference values can compress other players. Missing values are excluded per metric. '
                        'Minutes and appearances measure participation. Attacking metrics do not fairly '
                        'summarize defenders or goalkeepers. Related metrics such as goals and goals per 90, '
                        'or appearances and minutes, can make the profile repetitive. No overall score is calculated.')

@@ -32,19 +32,23 @@ Per-90 values come directly from the database: `90 * total / minutes`. Missing a
 
 Radar requires at least three selected metrics. Its reference includes all players in the selected league and season satisfying the active minimum-minutes and snapshot-position filters. Players with unknown minutes are excluded, matching the existing filter. Name search restricts selection candidates only; neither search nor selected players changes the reference distribution. Positions are source snapshots, not verified historical roles.
 
-Each metric excludes its own missing observations. For value `x`, with `n` valid observations:
+Each metric excludes its own missing observations and uses the maximum from the full reference population:
 
-`percentile(x) = 100 * (count(values < x) + 0.5 * count(values == x)) / n`
+`scaled(x) = 100 * x / reference_maximum`
 
-This midrank convention gives equal values equal scores. For `[0, 2, 2]`, scores are approximately `[16.67, 66.67, 66.67]`. The axis spans 0–100, but the observed minimum and maximum need not reach the endpoints. With at least two equal observations, all receive 50 and the app warns that the metric does not distinguish players. Fewer than two observations blocks the radar; small samples above that threshold remain descriptive and are not a reliability guarantee. Population size and valid counts per metric are shown.
+This preserves ratios: with a reference maximum of 30 goals, 27 and 15 goals appear at 90% and 50%. Selecting different comparison players or changing name search does not change the denominator. Changing league, season, minutes or position filters can change it. This is a percentage of the maximum, not a percentile rank or z-score. Extreme maxima can compress other values.
+
+Positive constant metrics receive 100% with a warning that they do not distinguish players. All-zero metrics have no valid denominator and block the radar; users must remove the metric or switch to Bars. Zeros on metrics with a positive maximum remain genuine zero scores. Fewer than two valid observations blocks the radar. The population size, valid observation counts and reference maxima are displayed; maxima are formatted for display but full precision is used for calculation.
+
+The radar uses an explicit dark panel with contrasting labels and grid lines in either app theme, percentage ticks, and a centred legend beneath the plot. Streamlit theme overrides are disabled for this chart so the polar background and text remain consistent.
 
 Any missing selected value also blocks the radar without dropping players or metrics. Users can remove the affected selection or switch to Bars. Actual values and historical club stints remain accessible beneath either view, including blocked radar states.
 
-Percentiles are relative standing, not overall quality. Minutes and appearances describe participation. These attacking metrics cannot fairly summarize defenders or goalkeepers; related axes can repeat information. No composite score is calculated.
+Percentages describe the share of the reference maximum, not overall quality. Minutes and appearances describe participation. These attacking metrics cannot fairly summarize defenders or goalkeepers; related axes can repeat information. No composite score is calculated.
 
 ### Dependencies and update
 
-Plotly 6.3.1 supplies both comparison charts through Python, including native polar traces, transparent fills and raw-value/percentile hover text. Using one chart library keeps colours and interactions consistent. The existing Altair pin is retained for Streamlit compatibility. No custom JavaScript or additional server is introduced.
+Plotly 6.3.1 supplies both comparison charts through Python, including native polar traces, transparent fills and raw-value/scaled-percentage hover text. Using one chart library keeps colours and interactions consistent. The existing Altair pin is retained for Streamlit compatibility. No custom JavaScript or additional server is introduced.
 
 For an existing database, activate the Python 3.12 environment and run:
 
@@ -56,7 +60,7 @@ python -m streamlit run app.py
 
 No database rebuild is needed for this feature.
 
-Validation for this update: 28 offline tests pass, including chart specifications and Streamlit AppTest interaction checks. Both chart types were exercised for all 25 league-season combinations against the local database (50 views, up to four players). `pip check` reports no broken requirements under Python 3.12.14. Browser visual inspection could not be completed: no browser executable was installed and the browser download failed. Chart serialization and AppTest are automated checks, not visual inspection; Windows rendering remains to be checked locally.
+Validation for this update: 29 offline tests pass, including chart specifications and Streamlit AppTest interaction checks. Both chart types were exercised for all 25 league-season combinations against the local database (50 views, up to four players). `pip check` reports no broken requirements under Python 3.12.14. Browser visual inspection could not be completed: no browser executable was installed and the browser download failed. Chart serialization and AppTest are automated checks, not visual inspection; Windows rendering remains to be checked locally.
 
 ## Python compatibility and isolated setup
 
