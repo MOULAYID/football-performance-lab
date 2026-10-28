@@ -12,7 +12,7 @@ python -m streamlit run app.py
 
 Open the local URL shown by Streamlit (normally http://localhost:8501). Stop with Ctrl+C. No JavaScript, backend server framework or API key is required. This command starts a local app; it does not publish a website.
 
-Use league, season, name, minimum-minutes and snapshot-position filters. In Compare players, use its independent league and season-range controls to select up to four players and multiple metrics, then switch between Bars and Radar. Comparisons stay within one league and season. Missing values remain unknown, and league coverage warnings appear within the relevant view.
+Use league, season, name, minimum-minutes and snapshot-position filters. In Compare players, use its independent league and season-range controls to select up to four players and multiple metrics, then switch between Bars and Radar. Comparisons share selected leagues and a season range. Missing values remain unknown, and league coverage warnings appear within the relevant view.
 
 The app reads `data/processed/football.duckdb`. To use another database, set `FOOTBALL_DB_PATH`. Rebuilds invalidate the app cache using the file modification time; finish the build before refreshing the app.
 
@@ -30,7 +30,7 @@ Per-90 values come directly from the database: `90 * total / minutes`. Missing a
 
 ### Radar reference and methodology
 
-Radar requires at least three selected metrics. Its reference includes all players in the selected league and season range satisfying the comparison view’s minimum-period-minutes, snapshot-position and optional every-season filters. A single-season range reproduces single-season statistics. Players with unknown minutes are excluded, matching the existing filter. Name search restricts selection candidates only; neither search nor selected players changes the reference distribution. Positions are source snapshots, not verified historical roles.
+Radar requires at least three selected metrics. Its reference includes all players across the selected leagues and season range satisfying the comparison view’s minimum-period-minutes, snapshot-position and optional every-season filters. A single-season range reproduces single-season statistics. Players with unknown minutes are excluded, matching the existing filter. Name search restricts selection candidates only; neither search nor selected players changes the reference distribution. Positions are source snapshots, not verified historical roles.
 
 Each metric excludes its own missing observations and uses the maximum from the full reference population:
 
@@ -95,7 +95,7 @@ Validation: 33 tests pass in the full suite. Streamlit AppTest also loaded five 
 
 ## Unified Compare players view
 
-The Compare players tab has independent controls for one league, a shared contiguous season range, minimum **combined** minutes, snapshot position, and up to four players. The default range is the latest single season (2025/26). Set both handles to the same season for single-season statistics, or extend the range for combined totals. All six existing metrics are available in Bars or Radar. Name search affects candidates only; changing chart type preserves selections and colours.
+The Compare players tab has independent controls for one or more leagues, a shared contiguous season range, minimum **combined** minutes, snapshot position, and up to four players. The default range is the latest single season (2025/26). Set both handles to the same season for single-season statistics, or extend the range for combined totals. All six existing metrics are available in Bars or Radar. Name search affects candidates only; changing chart type preserves selections and colours.
 
 Aggregation sums recorded league-season appearances, goals, assists and minutes. Existing same-league transfer aggregation is reused, so historical club stints do not duplicate totals. A null metric in any recorded season makes that combined metric null. Per-90 rates are recalculated as `90 * combined total / combined minutes`, never averaged across seasonal rates; zero or unknown minutes produce unavailable rates. Unknown combined minutes are excluded by the threshold, even at zero.
 
@@ -108,10 +108,24 @@ No database rebuild, dependency update or ingestion changes are needed. Test wit
 Before consolidation, combined-period validation passed 38 tests in the full suite. Automated Streamlit checks exercised 20 real-data views (five leagues × two ranges × Bars/Radar). Five-season goals, assists, minutes and appearance totals agree with an independent SQL aggregation of the underlying match records for all 1,232 Premier League players. This validates aggregation, not independent source accuracy. No browser visual inspection was performed.
 
 
-The comparison tabs are now consolidated: navigation is Players, Compare players, Performance over time, and Data & methodology. Sidebar controls and browsing counts/warnings belong only to Players. Comparison controls remain inside Compare players; history controls remain separate. Valid player/metric selections, chart type and colours survive changes between one and several seasons. Invalid player selections are removed when filters make them ineligible. The every-season checkbox appears only for multi-season ranges. Comparisons always share one league and period; different player-specific periods are not supported.
+The comparison tabs are now consolidated: navigation is Players, Compare players, Performance over time, and Data & methodology. Sidebar controls and browsing counts/warnings belong only to Players. Comparison controls remain inside Compare players; history controls remain separate. Valid player/metric selections, chart type and colours survive changes between one and several seasons. Invalid player selections are removed when filters make them ineligible. The every-season checkbox appears only for multi-season ranges. Comparisons always share one league selection and period; different player-specific periods are not supported.
 
 Consolidation validation: 37 tests pass after consolidating duplicate comparison UI tests. Automated real-data checks passed for 20 views (five leagues × single-season/five-season ranges × Bars/Radar). Visual browser inspection remains pending. No dependencies or database rebuild are required.
 
 ## Sidebar goals and assists filters
 
 Players can be filtered by minimum goals and minimum assists within the sidebar-selected league and season. Both conditions apply together, alongside existing filters. Both inputs start blank (disabled); clearing an input disables it again. Setting a threshold, including zero, excludes unknown values for that metric without converting missing data into zero. The matching-player count updates accordingly. These browsing filters do not affect Compare players, radar reference populations or Performance over time.
+
+## Cross-league comparison
+
+Compare players now offers a league multiselect, defaulting to Premier League. Players are identified by ID, with their included leagues in selection labels and tables. One shared season range applies to everyone; sidebar browsing and player history remain independent. Clearing all leagues shows guidance and no charts, while metric and chart controls remain available. Changing leagues preserves eligible player selections and colours.
+
+The pipeline aggregates existing unique player–league–season rows across the selected leagues. It sums counting statistics with strict null propagation, calculates per-90 rates from combined totals/minutes, and counts **distinct seasons**. A player in two leagues during one season has one recorded season. Duplicate input aggregate keys are rejected rather than silently double-counted. Historical club details are never re-added to these already aggregated totals. Minimum minutes applies after cross-league aggregation. Every-season eligibility means at least one record in any included league in each requested season, not full participation or complete match coverage.
+
+Radar reference maxima use the complete eligible cross-league aggregate population, independently of search and comparison selections. Changing league selection can change both totals and maxima. Zero/unknown minutes, unknown metrics, constant and zero-maximum axes, insufficient reference samples and fewer than three axes retain their existing handling. Radar values are percentages of reference maxima, not rankings or ratings.
+
+Included league subtotals show recorded seasons, minutes, appearances, goals, assists and source coverage warnings. The seasonal club table explicitly labels leagues. Known records in unselected leagues during the chosen period are listed separately and excluded from totals. This check cannot reveal activity outside the five-league database; absence of records does not establish absence of activity. Missing seasons are not filled with zeros.
+
+Statistics are not adjusted for league strength, team strength or opposition. Per-90 rates adjust for playing time only, and low-minute rates can be volatile. No league coefficients or composite ratings are introduced. No new dependencies, schema changes, ingestion changes or database rebuild are required.
+
+Cross-league validation: 42 tests pass. Automated Streamlit checks exercised 12 real-data views (one/two/five leagues × one/five seasons × Bars/Radar). Counting totals and distinct-season counts matched independent match-level SQL for all 5,526 players. Ronaldo’s 2021/22 Serie A/Premier League transfer was checked for distinct-season counting and excluded-record detection. These checks verify transformations, not independent source accuracy. Browser visual inspection remains pending.

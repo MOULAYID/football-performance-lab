@@ -108,6 +108,53 @@ class ExplorerTests(unittest.TestCase):
         app.multiselect(key='period_players').set_value([1]).run()
         self.assertEqual(app.tabs[1].dataframe[0].value['Seasons selected'].tolist(),[1])
 
+    def test_cross_league_controls_breakdowns_and_exclusions(self):
+        import pandas as pd
+        for name, extra in {
+            'games': {'game_id':4,'competition_id':'ES1','season':2024,'date':'2024-11-01','home_club_id':10,'away_club_id':20,'home_club_goals':1,'away_club_goals':0},
+            'appearances': {'player_id':1,'game_id':4,'player_club_id':10,'minutes_played':90,'goals':1,'assists':0},
+            'competitions': {'competition_id':'ES1','name':'La Liga'},
+        }.items():
+            path=self.fixture.root/(name+'.csv')
+            frame=pd.read_csv(path)
+            pd.concat([frame,pd.DataFrame([extra])],ignore_index=True).to_csv(path,index=False)
+        build_database(self.fixture.root,self.fixture.output)
+        app=AppTest.from_file(str(APP),default_timeout=15).run()
+        self.assertEqual(app.multiselect(key='period_leagues').value,['GB1'])
+        app.select_slider(key='period_range').set_value((2024,2024)).run()
+        app.number_input(key='period_minutes').set_value(0).run()
+        app.multiselect(key='period_players').set_value([1,2]).run()
+        self.assertTrue(any('Known excluded records' in w.value for w in app.tabs[1].warning))
+        colors=app.session_state['period_colors']
+        app.multiselect(key='period_leagues').set_value(['GB1','ES1']).run()
+        self.assertFalse(app.exception)
+        self.assertEqual(app.multiselect(key='period_players').value,[1,2])
+        self.assertEqual(app.session_state['period_colors'],colors)
+        self.assertTrue(any('La Liga' in x for x in app.multiselect(key='period_players').options))
+        self.assertEqual(app.tabs[1].dataframe[1].value['Goals'].tolist(),['3','0'])
+        self.assertEqual(app.tabs[1].dataframe[0].value['Seasons with records'].tolist(),[1,1])
+        self.assertIn('League',app.tabs[1].dataframe[2].value.columns)
+        self.assertEqual(set(app.tabs[1].dataframe[3].value.League),{'Premier League','La Liga'})
+        self.assertFalse(any('Known excluded records' in w.value for w in app.tabs[1].warning))
+        app.multiselect(key='period_metrics').set_value(['goals','minutes','recorded_appearances']).run()
+        app.radio(key='period_chart').set_value('Radar').run()
+        before=json.loads(app.tabs[1].get('plotly_chart')[0].proto.spec)['data'][0]['r']
+        app.text_input(key='period_search').set_value('Transfer').run()
+        self.assertEqual(before,json.loads(app.tabs[1].get('plotly_chart')[0].proto.spec)['data'][0]['r'])
+        app.radio(key='period_chart').set_value('Bars').run()
+        self.assertEqual(app.session_state['period_colors'][1],colors[1])
+        app.multiselect(key='period_leagues').set_value([]).run()
+        self.assertFalse(app.exception)
+        self.assertEqual(app.multiselect(key='period_players').value,[])
+        self.assertEqual(len(app.tabs[1].get('plotly_chart')),0)
+        self.assertTrue(any('Select at least one league' in x.value for x in app.tabs[1].info))
+        self.assertEqual(app.multiselect(key='period_metrics').value,['goals','minutes','recorded_appearances'])
+        app.multiselect(key='period_leagues').set_value(['ES1']).run()
+        app.multiselect(key='period_players').set_value([1]).run()
+        self.assertFalse(app.exception)
+        app.multiselect(key='period_leagues').set_value(['FR1']).run()
+        self.assertEqual(app.multiselect(key='period_players').value,[])
+
     def test_missing_database(self):
         with patch.dict(os.environ, {'FOOTBALL_DB_PATH': str(self.fixture.root / 'absent.duckdb')}):
             app = AppTest.from_file(str(APP)).run()
