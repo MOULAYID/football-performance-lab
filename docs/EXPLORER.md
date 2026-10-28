@@ -80,3 +80,15 @@ python -m streamlit run app.py
 ```
 
 Skip `deactivate` if no environment is active. This preserves downloaded data and the database. In future terminals use `source .venv312/Scripts/activate`. Verified locally: Python 3.12.14, Altair 5.5.0 and typing-extensions 4.16.0 import and serialize a bar chart successfully. Windows execution remains to be confirmed on the user's machine.
+
+## Performance over time
+
+The dedicated tab selects one player across the entire database, a contiguous season range (default 2021/22–2025/26), and any of the six existing metrics. Sidebar league, season, search, position and minutes filters do not restrict history. Player selection starts empty, avoiding unsolicited charts in other tabs.
+
+Separate line charts show actual values, not radar scores. Each league is its own series with the same season axis; missing observations are gaps (`connectgaps=False`). A player in two leagues in one season has two records and two points, never an implicitly combined total. Same-league club stints remain combined by the existing database aggregate. Hover text shows clubs and coverage status; the table below includes all selected seasons, including absent records. Club names are source snapshots; memberships are historical match records.
+
+The seasonal table gives absolute and percentage changes only when adjacent selected seasons each have one record in the same league and both metric values are known. Percentage changes are unavailable for zero baselines; absolute changes from zero remain valid. League switches, split-league seasons and missing years have no calculated change. The first selected season is not compared outside the chosen range. Coverage warnings remain visible; changes can inherit incomplete totals. A missing record does not establish zero activity or a particular reason for absence.
+
+Goals, assists, appearances and minutes reuse stored totals. Per-90 values reuse the existing SQL calculation; zero/unknown minutes remain unavailable. No new dependencies, database changes or downloads are required. This is descriptive performance history, not a rating or proof of improvement. Role, competition and participation changes affect interpretation.
+
+Validation: 33 tests pass in the full suite. Streamlit AppTest also loaded five real player histories, including split-league seasons and five-season records. Focused tests cover gaps, true zeros, unknown rates, within-season league changes, club labels, percentage-change rules and independent Streamlit controls. Browser visual inspection remains pending.

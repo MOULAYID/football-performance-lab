@@ -77,6 +77,27 @@ class ExplorerTests(unittest.TestCase):
         self.assertTrue(any('Insufficient reference data' in w.value for w in app.warning))
         self.assertEqual(len(app.get('plotly_chart')), 0)
 
+    def test_history_independent_controls_and_missing_seasons(self):
+        app = AppTest.from_file(str(APP), default_timeout=15).run()
+        app.selectbox(key='history_player').set_value(1).run()
+        self.assertFalse(app.exception)
+        tab = app.tabs[2]
+        self.assertEqual(len(tab.get('plotly_chart')), 3)  # Assists missing in fixture.
+        table = tab.dataframe[0].value
+        self.assertEqual(table['Season'].tolist(), ['2021/22','2022/23','2023/24','2024/25','2025/26'])
+        self.assertEqual(table['Goals'].tolist(), ['Unavailable','Unavailable','Unavailable','2','Unavailable'])
+        self.assertTrue(any('Historical coverage warning' in w.value for w in tab.warning))
+        app.text_input(key='search').set_value('nobody').run()
+        app.selectbox(key='league').set_value('ES1').run()
+        self.assertEqual(app.selectbox(key='history_player').value, 1)
+        self.assertTrue(app.tabs[2].dataframe[0].value.equals(table))
+        app.select_slider(key='history_range').set_value((2024,2024)).run()
+        self.assertEqual(len(app.tabs[2].dataframe[0].value),1)
+        app.multiselect(key='history_metrics').set_value([]).run()
+        self.assertFalse(app.exception)
+        self.assertEqual(len(app.tabs[2].get('plotly_chart')),0)
+        self.assertTrue(any('Select at least one' in x.value for x in app.tabs[2].info))
+
     def test_missing_database(self):
         with patch.dict(os.environ, {'FOOTBALL_DB_PATH': str(self.fixture.root / 'absent.duckdb')}):
             app = AppTest.from_file(str(APP)).run()
