@@ -1,9 +1,19 @@
 import unittest
 from unittest.mock import patch
-from scripts.check_access import AuditError, fetch, summarize_players
+from scripts.check_access import AuditError, error_reason, fetch, summarize_players
 
 
 class AuditTests(unittest.TestCase):
+    def test_plan_reason_is_visible_but_key_and_account_are_not(self):
+        result = error_reason({'errors': {'plan': 'Season unavailable for SECRET'},
+                               'account': {'email': 'private@example.com'}}, 'SECRET')
+        self.assertIn('Season unavailable', result)
+        self.assertNotIn('SECRET', result)
+        self.assertNotIn('private@example.com', result)
+
+    def test_escaped_key_is_redacted(self):
+        self.assertNotIn('sensitive', error_reason({'message': 'sensitive"key'}, 'sensitive"key'))
+
     def test_zero_is_not_missing_and_other_seasons_are_excluded(self):
         stats = {'league': {'id': 39, 'season': 2023},
                  'games': {'minutes': 0, 'position': 'Attacker'},
