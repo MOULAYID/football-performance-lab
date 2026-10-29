@@ -1,6 +1,6 @@
 """Single-season and combined-period comparisons using one shared workflow."""
 import pandas as pd
-from comparison import (METRICS, DEFAULT_METRICS, COLORS, actual_values, display_value,
+from comparison import (METRICS, DEFAULT_METRICS, COLORS, APPEARANCES_HELP, actual_values, display_value,
                         maximum_scores, radar_issues, radar_figure, bar_figure)
 from performance import season_label
 
@@ -57,33 +57,42 @@ def league_breakdown(players, player_ids, selected_leagues, start, end):
 
 def render_combined(players, stints, coverage, leagues):
     import streamlit as st
-    st.subheader('Compare players')
-    st.caption('Compare recorded contributions across selected leagues. Choose the same start and end season for a single-season comparison, or extend the range to combine seasons. These controls are independent of the sidebar.')
+    st.caption('Compare recorded contributions across selected leagues. Choose the same start and end season for a single-season comparison, or extend the range to combine seasons. Filters here affect only this comparison.')
     selected_leagues = st.multiselect('Comparison leagues', list(leagues), default=['GB1'], format_func=leagues.get, key='period_leagues')
     league_names = ', '.join(leagues[c] for c in selected_leagues)
     start,end = st.select_slider('Season range', options=list(range(2021,2026)), value=(2025,2025), format_func=season_label, key='period_range')
-    minimum = st.number_input('Minimum minutes in selected period', min_value=0, value=900, step=90, key='period_minutes')
+    eligibility = st.columns(2)
+    minimum = eligibility[0].number_input('Minimum minutes in selected period', min_value=0, value=900, step=90, key='period_minutes')
     totals = period_totals(players,selected_leagues,start,end)
     positions = sorted(totals.position_snapshot.dropna().unique())
     if st.session_state.get('period_position', 'All') not in ['All']+positions:
         st.session_state.period_position = 'All'
-    position = st.selectbox('Position snapshot', ['All']+positions, key='period_position')
+    position = eligibility[1].selectbox('Position snapshot', ['All']+positions, key='period_position', help='Source snapshot, not a verified historical role.')
     full = st.checkbox('Require a player record in every selected season', key='period_full') if start != end else False
     st.caption(f'{league_names or "No leagues selected"} · ' + (season_label(start) if start == end else f'{season_label(start)}–{season_label(end)} · {end-start+1} seasons'))
-    st.caption('Position is a source snapshot, not a historical role. The minutes threshold applies after aggregation; unknown combined minutes are excluded. '
-               'Every-season eligibility requires a record in at least one included league per season; it does not guarantee complete match data or full-season participation.')
     reference = period_reference(totals,minimum,position,full)
-    search = st.text_input('Find a comparison player', key='period_search')
-    candidates = reference[reference.player_name.str.contains(search,case=False,regex=False,na=False)].sort_values(['player_name','player_id'])
+    candidates = reference.sort_values(['player_name','player_id'])
     labels = {int(r.player_id): f'{r.player_name} · {", ".join(leagues[c] for c in r.league_ids)} · ID {r.player_id}' for r in candidates.itertuples()}
-    if 'period_players' in st.session_state:
-        st.session_state.period_players = [p for p in st.session_state.period_players if p in labels]
-    chosen = st.multiselect('Players (up to four)', list(labels), format_func=labels.get, max_selections=4, key='period_players')
-    metrics = st.multiselect('Comparison metrics', list(METRICS), default=DEFAULT_METRICS, format_func=METRICS.get, key='period_metrics')
+    previous = st.session_state.get('period_players', [])
+    valid = [p for p in previous if p in labels]
+    # Rebind valid IDs before rendering: changed league labels change widget identity.
+    st.session_state.period_players = valid
+    if valid != previous:
+        st.info('Some selected players no longer match the league, period or eligibility filters and were removed.')
+    chosen = st.multiselect('Players (up to four)', list(labels), format_func=labels.get, max_selections=4, key='period_players', help='Type here to find and add players. Searching does not remove existing selections.')
+    metrics = st.multiselect('Comparison metrics', list(METRICS), default=DEFAULT_METRICS, format_func=METRICS.get, key='period_metrics', help=APPEARANCES_HELP)
     mode = st.radio('Chart type', ['Bars','Radar'], horizontal=True, key='period_chart')
-    st.warning('Statistics are not adjusted for league strength, team strength or opposition.')
-    st.caption('Per-90 rates adjust for playing time, not competition difficulty. Low-minute rates can be volatile. '
-               'Changing leagues can change player totals and radar reference maxima. Totals depend on participation and available records.')
+    st.caption('Statistics are not adjusted for league strength, team strength or opposition.')
+    with st.expander('How to read this comparison'):
+        st.markdown(APPEARANCES_HELP)
+        st.caption('Appearances count recorded matches played, including substitutes, not starts only or unused-bench selections. '
+                   'Only selected domestic leagues are included. Historical club stints are combined once and retained in the details below.')
+        st.caption('Per 90 = 90 × combined metric total ÷ combined minutes, never the average of seasonal rates. '
+                   'Zero or unknown minutes give an unavailable rate. Rates adjust for playing time, not competition difficulty; low-minute rates can be volatile.')
+        st.caption('An unknown metric in any included record makes that combined value unavailable. Missing seasons are not filled with zero. '
+                   'Totals depend on participation and available records. A record in every selected season does not guarantee complete match data or full-season participation. '
+                   'The minutes threshold applies after aggregation; unknown minutes are excluded. Positions are source snapshots, not historical roles. '
+                   'Changing leagues can change totals and radar reference maxima.')
     if not selected_leagues:
         st.info('Select at least one league to compare players.')
         return
@@ -91,11 +100,6 @@ def render_combined(players, stints, coverage, leagues):
     bad = scope[(scope.matches_with_suspect_coverage>0) | (~scope.expected_count_matches.astype(bool))]
     if not bad.empty:
         st.warning('Period coverage warning: source records may be incomplete in '+', '.join(f'{leagues[r.competition_id]} {season_label(r.season)}' for r in bad.itertuples())+'. Recorded totals and rates inherit these limitations.')
-    st.caption('Appearances include substitute appearances, not unused bench selections or starts only.')
-    st.caption('Goals, assists, minutes and appearances are summed over available season records, across selected leagues; historical club stints are counted once. '
-               'Per 90 = 90 × combined total ÷ combined minutes, never the average of seasonal rates. '
-               'An unknown metric in any recorded season makes its combined value unavailable. '
-               'Missing seasons are not filled with zero: displayed totals describe recorded contributions only, not a verified complete period or all competitions.')
     if reference.empty:
         st.info('No players match the period filters. Lower combined minutes or relax the season/position requirement.')
     if not metrics:
@@ -115,9 +119,10 @@ def render_combined(players, stints, coverage, leagues):
         st.warning('Unequal season counts: selected players contributed different numbers of recorded seasons. Consider the every-season filter; even then minutes may differ.')
     selected = selected.copy()
     selected['Included leagues'] = selected.league_ids.map(lambda codes: ', '.join(leagues[c] for c in codes))
-    st.dataframe(selected[['player_name','Included leagues','seasons_recorded','seasons_requested','recorded_seasons','absent_seasons','coverage_warning']].rename(columns={
-        'player_name':'Player','seasons_recorded':'Seasons with records','seasons_requested':'Seasons selected','recorded_seasons':'Recorded seasons',
-        'absent_seasons':'Seasons without records','coverage_warning':'Source coverage warning'}),hide_index=True,width='stretch')
+    with st.expander('Recorded seasons and coverage', expanded=bool((selected.seasons_recorded < selected.seasons_requested).any() or selected.coverage_warning.any())):
+        st.dataframe(selected[['player_name','Included leagues','seasons_recorded','seasons_requested','recorded_seasons','absent_seasons','coverage_warning']].rename(columns={
+            'player_name':'Player','seasons_recorded':'Seasons with records','seasons_requested':'Seasons selected','recorded_seasons':'Recorded seasons',
+            'absent_seasons':'Seasons without records','coverage_warning':'Source coverage warning'}),hide_index=True,width='stretch')
     if mode=='Bars':
         for i in range(0,len(metrics),2):
             for col,metric in zip(st.columns(2),metrics[i:i+2]):
@@ -128,7 +133,8 @@ def render_combined(players, stints, coverage, leagues):
         st.caption(f'Reference: {league_names}, {season_label(start)}–{season_label(end)}, minimum {minimum} combined minutes, '
                    f'position {position}, every-season records required: {full}. {len(reference)} players. '
                    'Search and selected players do not restrict this population. Each axis is 100 × combined value ÷ reference maximum, not a percentile or rating.')
-        st.dataframe(summary,hide_index=True,width='stretch')
+        with st.expander('Reference maxima and valid observations'):
+            st.dataframe(summary,hide_index=True,width='stretch')
         issues = radar_issues(selected,metrics,scores,summary)
         for issue in issues:
             st.warning(issue)
@@ -143,23 +149,23 @@ def render_combined(players, stints, coverage, leagues):
     values = actual_values(selected,metrics)
     values.insert(1, 'Included leagues', selected['Included leagues'])
     st.dataframe(values,hide_index=True,width='stretch')
-    st.subheader('Season and historical club details')
-    detail = stints[stints.competition_id.isin(selected_leagues) & stints.season.between(start,end) & stints.player_id.isin(chosen)].copy()
-    detail['Season'] = detail.season.map(season_label)
-    detail['League'] = detail.competition_id.map(leagues)
-    for metric in METRICS:
-        detail[METRICS[metric]] = detail[metric].map(lambda v,m=metric:display_value(v,m))
-    st.dataframe(detail.sort_values(['player_id','season','club_id'])[['player_name','Season','League','club_name_snapshot',*METRICS.values(),'matches_missing_club_appearances']].rename(columns={
-        'player_name':'Player','club_name_snapshot':'Club (source name)','matches_missing_club_appearances':'Matches missing club appearances'}),hide_index=True,width='stretch')
+    with st.expander('League subtotals and historical club details'):
+        detail = stints[stints.competition_id.isin(selected_leagues) & stints.season.between(start,end) & stints.player_id.isin(chosen)].copy()
+        detail['Season'] = detail.season.map(season_label)
+        detail['League'] = detail.competition_id.map(leagues)
+        for metric in METRICS:
+            detail[METRICS[metric]] = detail[metric].map(lambda v,m=metric:display_value(v,m))
+        st.dataframe(detail.sort_values(['player_id','season','club_id'])[['player_name','Season','League','club_name_snapshot',*METRICS.values(),'matches_missing_club_appearances']].rename(columns={
+            'player_name':'Player','club_name_snapshot':'Club (source name)','matches_missing_club_appearances':'Matches missing club appearances'}),hide_index=True,width='stretch')
 
-    st.subheader('Included league subtotals')
-    st.caption('These are league-specific recorded contributions, not complete-period totals.')
-    breakdown = league_breakdown(players, chosen, selected_leagues, start, end)
-    breakdown['League'] = breakdown.competition_id.map(leagues)
-    for metric in ['minutes','recorded_appearances','goals','assists']:
-        breakdown[METRICS[metric]] = breakdown[metric].map(lambda v,m=metric: display_value(v,m))
-    st.dataframe(breakdown[['player_name','League','recorded_seasons','Minutes played','Appearances','Goals','Assists','coverage_warning']].rename(columns={
-        'player_name':'Player','recorded_seasons':'Recorded seasons','coverage_warning':'Source coverage warning'}),hide_index=True,width='stretch')
+        st.markdown('**Included league subtotals**')
+        st.caption('These are league-specific recorded contributions, not complete-period totals.')
+        breakdown = league_breakdown(players, chosen, selected_leagues, start, end)
+        breakdown['League'] = breakdown.competition_id.map(leagues)
+        for metric in ['minutes','recorded_appearances','goals','assists']:
+            breakdown[METRICS[metric]] = breakdown[metric].map(lambda v,m=metric: display_value(v,m))
+        st.dataframe(breakdown[['player_name','League','recorded_seasons','Minutes played','Appearances','Goals','Assists','coverage_warning']].rename(columns={
+            'player_name':'Player','recorded_seasons':'Recorded seasons','coverage_warning':'Source coverage warning'}),hide_index=True,width='stretch')
     excluded = excluded_records(players, chosen, selected_leagues, start, end)
     if not excluded.empty:
         st.warning('Known excluded records: some selected players have records in unselected leagues during this period. The comparison includes selected leagues only.')

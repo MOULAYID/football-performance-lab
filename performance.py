@@ -66,9 +66,9 @@ def trend_figure(history, metric, leagues):
                                    connectgaps=False, name=leagues.get(league, league),
                                    line=dict(color=(COLORS + ['#9467BD'])[index % 5]), customdata=details,
                                    hovertemplate='%{x}<br>Actual: %{customdata[0]}<br>Clubs: %{customdata[1]}<br>%{customdata[2]}<extra>%{fullData.name}</extra>'))
-    figure.update_layout(title=METRICS[metric], height=340, margin=dict(l=25, r=25, t=55, b=55),
-                         xaxis=dict(title='Season', type='category', categoryorder='array', categoryarray=[season_label(y) for y in years]),
-                         yaxis=dict(title=METRICS[metric], rangemode='tozero'), legend=dict(orientation='h'))
+    figure.update_layout(title=METRICS[metric], height=340, margin=dict(l=25, r=25, t=85, b=45),
+                         xaxis=dict(title=None, type='category', categoryorder='array', categoryarray=[season_label(y) for y in years]),
+                         yaxis=dict(title=METRICS[metric], rangemode='tozero'), legend=dict(orientation='h', x=0, y=1.15, yanchor='bottom'))
     if not metric.endswith('per90'):
         figure.update_yaxes(tickformat=',d')
     return figure
@@ -76,17 +76,18 @@ def trend_figure(history, metric, leagues):
 
 def render_performance(players, stints, leagues):
     import streamlit as st
-    st.subheader('Performance over time')
-    st.caption('Choose a player from all five leagues. These controls are independent of the sidebar filters.')
+    st.caption('Choose a player from all five leagues. Filters here affect only this history.')
     people = players[['player_id', 'player_name']].drop_duplicates('player_id').sort_values(['player_name', 'player_id'])
     labels = {int(r.player_id): f'{r.player_name} · ID {r.player_id}' for r in people.itertuples()}
     player = st.selectbox('Player history', list(labels), index=None, format_func=labels.get, key='history_player', placeholder='Search for a player')
     start, end = st.select_slider('Season range', options=list(range(2021, 2026)), value=(2021, 2025), format_func=season_label, key='history_range')
     metrics = st.multiselect('History metrics', list(METRICS), default=['goals', 'assists', 'minutes', 'goals_per90'], format_func=METRICS.get, key='history_metrics')
-    st.caption('Actual values, not normalized scores. Per 90 = total ÷ minutes × 90; unknown or zero minutes give an unavailable rate. '
-               'Higher values do not necessarily mean improvement: playing time, league, team and role can change. '
-               'Low-minute per-90 rates can be volatile; consult minutes and appearances. '
-               'Attacking statistics give a limited picture of defenders and goalkeepers.')
+    st.caption('Seasonal statistics describe recorded performance, not a player rating or proof of improvement.')
+    with st.expander('How to read trends and season changes'):
+        st.caption('Actual values, not normalized scores. Per 90 = total ÷ minutes × 90; unknown or zero minutes give an unavailable rate. '
+                   'Higher values do not necessarily mean improvement: playing time, league, team and role can change. '
+                   'Low-minute per-90 rates can be volatile; consult minutes and appearances. '
+                   'Attacking statistics give a limited picture of defenders and goalkeepers.')
     if player is None:
         st.info('Select one player to view their seasonal history.')
         return
@@ -110,14 +111,18 @@ def render_performance(players, stints, leagues):
     st.caption('Changes compare adjacent selected seasons in the same league only, with one league record in each. '
                'No change is calculated across missing seasons, split-league seasons or league switches. Percentage change is unavailable when the previous value is zero. '
                'Changes inherit any coverage limitations; the first selected season has no comparison.')
-    st.dataframe(history_table(history, metrics, leagues), hide_index=True, width='stretch')
+    show_changes = st.checkbox('Show year-over-year changes', key='history_show_changes')
+    table = history_table(history, metrics, leagues)
+    if not show_changes:
+        table = table[[c for c in table if not c.endswith((' change', ' change %'))]]
+    st.dataframe(table, hide_index=True, width='stretch')
     detail = stints[(stints.player_id == player) & stints.season.between(start, end)].copy()
-    st.subheader('Historical clubs by season')
-    if detail.empty:
-        st.info('No club records in this season range.')
-    else:
-        detail['Season'] = detail.season.map(season_label)
-        detail['League'] = detail.competition_id.map(leagues)
-        for metric in METRICS:
-            detail[METRICS[metric]] = detail[metric].map(lambda value, m=metric: display_value(value, m))
-        st.dataframe(detail.sort_values(['season', 'competition_id', 'club_id'])[['Season', 'League', 'club_name_snapshot', *METRICS.values(), 'matches_missing_club_appearances']].rename(columns={'club_name_snapshot': 'Club (source name)', 'matches_missing_club_appearances': 'Matches missing club appearances'}), hide_index=True, width='stretch')
+    with st.expander('Historical clubs by season'):
+        if detail.empty:
+            st.info('No club records in this season range.')
+        else:
+            detail['Season'] = detail.season.map(season_label)
+            detail['League'] = detail.competition_id.map(leagues)
+            for metric in METRICS:
+                detail[METRICS[metric]] = detail[metric].map(lambda value, m=metric: display_value(value, m))
+            st.dataframe(detail.sort_values(['season', 'competition_id', 'club_id'])[['Season', 'League', 'club_name_snapshot', *METRICS.values(), 'matches_missing_club_appearances']].rename(columns={'club_name_snapshot': 'Club (source name)', 'matches_missing_club_appearances': 'Matches missing club appearances'}), hide_index=True, width='stretch')

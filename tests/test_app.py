@@ -91,12 +91,13 @@ class ExplorerTests(unittest.TestCase):
         app.radio(key='period_chart').set_value('Radar').run()
         self.assertFalse(app.exception)
         before=json.loads(app.tabs[1].get('plotly_chart')[0].proto.spec)['data'][0]['r']
-        app.text_input(key='period_search').set_value('Transfer').run()
-        self.assertEqual(app.multiselect(key='period_players').value,[1])
+        app.session_state['period_search'] = 'Transfer'  # Ignore stale pre-upgrade search.
+        app.run()
+        self.assertEqual(app.multiselect(key='period_players').value,[1,2])
         after=json.loads(app.tabs[1].get('plotly_chart')[0].proto.spec)['data'][0]['r']
         self.assertEqual(before,after)
         app.text_input(key='search').set_value('nobody').run()
-        self.assertEqual(app.multiselect(key='period_players').value,[1])
+        self.assertEqual(app.multiselect(key='period_players').value,[1,2])
         app.radio(key='period_chart').set_value('Bars').run()
         self.assertEqual(len(app.tabs[1].get('plotly_chart')),3)
         app.multiselect(key='period_metrics').set_value([]).run()
@@ -139,7 +140,8 @@ class ExplorerTests(unittest.TestCase):
         app.multiselect(key='period_metrics').set_value(['goals','minutes','recorded_appearances']).run()
         app.radio(key='period_chart').set_value('Radar').run()
         before=json.loads(app.tabs[1].get('plotly_chart')[0].proto.spec)['data'][0]['r']
-        app.text_input(key='period_search').set_value('Transfer').run()
+        app.session_state['period_search'] = 'Transfer'  # Ignore stale pre-upgrade search.
+        app.run()
         self.assertEqual(before,json.loads(app.tabs[1].get('plotly_chart')[0].proto.spec)['data'][0]['r'])
         app.radio(key='period_chart').set_value('Bars').run()
         self.assertEqual(app.session_state['period_colors'][1],colors[1])
@@ -154,6 +156,40 @@ class ExplorerTests(unittest.TestCase):
         self.assertFalse(app.exception)
         app.multiselect(key='period_leagues').set_value(['FR1']).run()
         self.assertEqual(app.multiselect(key='period_players').value,[])
+
+    def test_player_filters_are_local_readable_and_recover_from_empty_results(self):
+        app = AppTest.from_file(str(APP), default_timeout=15).run()
+        self.assertEqual(len(app.sidebar.selectbox), 0)
+        self.assertEqual(len(app.sidebar.number_input), 0)
+        self.assertFalse(any(t.key == 'period_search' for t in app.text_input))
+        app.selectbox(key='season').set_value(2024).run()
+        app.number_input(key='minutes').set_value(0).run()
+        config = json.loads(app.tabs[0].dataframe[0].proto.columns)
+        self.assertEqual(config['recorded_appearances']['label'], 'Appearances')
+        self.assertIn('substitute appearances', config['recorded_appearances']['help'])
+        app.number_input(key='min_goals').set_value(1).run()
+        self.assertEqual(app.tabs[0].dataframe[0].value.player_name.tolist(), ['Transfer Player'])
+        app.number_input(key='min_assists').set_value(0).run()
+        self.assertTrue(any('No players match' in x.value for x in app.tabs[0].info))
+        app.number_input(key='min_goals').set_value(None).run()
+        app.number_input(key='min_assists').set_value(None).run()
+        app.text_input(key='search').set_value('no such player').run()
+        self.assertTrue(any('No players match' in x.value for x in app.tabs[0].info))
+        app.text_input(key='search').set_value('').run()
+        self.assertEqual(len(app.tabs[0].dataframe[0].value), 2)
+        self.assertFalse(app.exception)
+
+    def test_history_changes_are_optional_without_losing_actual_values(self):
+        app = AppTest.from_file(str(APP), default_timeout=15).run()
+        app.selectbox(key='history_player').set_value(1).run()
+        original = app.tabs[2].dataframe[0].value
+        self.assertFalse(any(c.endswith(' change') for c in original))
+        app.checkbox(key='history_show_changes').set_value(True).run()
+        expanded = app.tabs[2].dataframe[0].value
+        self.assertIn('Goals change', expanded)
+        self.assertTrue(expanded[original.columns].equals(original))
+        self.assertIn('Historical clubs by season', [e.label for e in app.tabs[2].expander])
+        self.assertFalse(app.exception)
 
     def test_missing_database(self):
         with patch.dict(os.environ, {'FOOTBALL_DB_PATH': str(self.fixture.root / 'absent.duckdb')}):
