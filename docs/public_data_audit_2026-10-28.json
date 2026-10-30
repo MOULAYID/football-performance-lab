@@ -1,0 +1,349 @@
+{
+  "checked_at": "2026-10-28T14:42:46.138515+00:00",
+  "sources": {
+    "top5": {
+      "files": {
+        "player_seasons.csv": {
+          "status": "downloaded",
+          "sha256": "72faf86d45f32eed6d7154f4d213c1e5732ce7712f234f9ba4c23eaac3fa6543",
+          "url": "https://raw.githubusercontent.com/m-mahadi/top5-football-dataset/8940299c2c56c2c0932d3caf292336f5e1689893/data/master/player_seasons.csv",
+          "retrieved_at": "2026-10-28T14:42:49.370326+00:00"
+        }
+      },
+      "status": "audited",
+      "coverage": "unverified",
+      "audit": {
+        "source": "top5",
+        "source_commit": "8940299c2c56c2c0932d3caf292336f5e1689893",
+        "matrix": [
+          {
+            "league": "ENG-Premier League",
+            "season": "2021/22",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "ENG-Premier League",
+            "season": "2022/23",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "ENG-Premier League",
+            "season": "2023/24",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "ENG-Premier League",
+            "season": "2024/25",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "present_not_completeness_verified",
+            "rows": 574,
+            "observed_team_labels": 20,
+            "missing_fields": {
+              "minutes": 0,
+              "appearances": 0,
+              "goals": 0,
+              "assists": 0,
+              "xg": 23
+            },
+            "invalid_fields": {}
+          },
+          {
+            "league": "ENG-Premier League",
+            "season": "2025/26",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "present_not_completeness_verified",
+            "rows": 551,
+            "observed_team_labels": 20,
+            "missing_fields": {
+              "minutes": 0,
+              "appearances": 0,
+              "goals": 0,
+              "assists": 0,
+              "xg": 24
+            },
+            "invalid_fields": {}
+          },
+          {
+            "league": "ESP-La Liga",
+            "season": "2021/22",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "ESP-La Liga",
+            "season": "2022/23",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "ESP-La Liga",
+            "season": "2023/24",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "ESP-La Liga",
+            "season": "2024/25",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "present_not_completeness_verified",
+            "rows": 601,
+            "observed_team_labels": 20,
+            "missing_fields": {
+              "minutes": 0,
+              "appearances": 0,
+              "goals": 0,
+              "assists": 0,
+              "xg": 56
+            },
+            "invalid_fields": {}
+          },
+          {
+            "league": "ESP-La Liga",
+            "season": "2025/26",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "present_not_completeness_verified",
+            "rows": 611,
+            "observed_team_labels": 20,
+            "missing_fields": {
+              "minutes": 0,
+              "appearances": 0,
+              "goals": 0,
+              "assists": 0,
+              "xg": 48
+            },
+            "invalid_fields": {}
+          },
+          {
+            "league": "ITA-Serie A",
+            "season": "2021/22",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "ITA-Serie A",
+            "season": "2022/23",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "ITA-Serie A",
+            "season": "2023/24",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "ITA-Serie A",
+            "season": "2024/25",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "present_not_completeness_verified",
+            "rows": 634,
+            "observed_team_labels": 20,
+            "missing_fields": {
+              "minutes": 0,
+              "appearances": 0,
+              "goals": 0,
+              "assists": 0,
+              "xg": 31
+            },
+            "invalid_fields": {}
+          },
+          {
+            "league": "ITA-Serie A",
+            "season": "2025/26",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "present_not_completeness_verified",
+            "rows": 609,
+            "observed_team_labels": 20,
+            "missing_fields": {
+              "minutes": 0,
+              "appearances": 0,
+              "goals": 0,
+              "assists": 0,
+              "xg": 37
+            },
+            "invalid_fields": {}
+          },
+          {
+            "league": "GER-Bundesliga",
+            "season": "2021/22",
+            "expected_teams": 18,
+            "expected_league_matches": 306,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "GER-Bundesliga",
+            "season": "2022/23",
+            "expected_teams": 18,
+            "expected_league_matches": 306,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "GER-Bundesliga",
+            "season": "2023/24",
+            "expected_teams": 18,
+            "expected_league_matches": 306,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "GER-Bundesliga",
+            "season": "2024/25",
+            "expected_teams": 18,
+            "expected_league_matches": 306,
+            "status": "present_not_completeness_verified",
+            "rows": 492,
+            "observed_team_labels": 18,
+            "missing_fields": {
+              "minutes": 0,
+              "appearances": 0,
+              "goals": 0,
+              "assists": 0,
+              "xg": 16
+            },
+            "invalid_fields": {}
+          },
+          {
+            "league": "GER-Bundesliga",
+            "season": "2025/26",
+            "expected_teams": 18,
+            "expected_league_matches": 306,
+            "status": "present_not_completeness_verified",
+            "rows": 507,
+            "observed_team_labels": 18,
+            "missing_fields": {
+              "minutes": 0,
+              "appearances": 0,
+              "goals": 0,
+              "assists": 0,
+              "xg": 21
+            },
+            "invalid_fields": {}
+          },
+          {
+            "league": "FRA-Ligue 1",
+            "season": "2021/22",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "FRA-Ligue 1",
+            "season": "2022/23",
+            "expected_teams": 20,
+            "expected_league_matches": 380,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "FRA-Ligue 1",
+            "season": "2023/24",
+            "expected_teams": 18,
+            "expected_league_matches": 306,
+            "status": "missing",
+            "rows": 0
+          },
+          {
+            "league": "FRA-Ligue 1",
+            "season": "2024/25",
+            "expected_teams": 18,
+            "expected_league_matches": 306,
+            "status": "present_not_completeness_verified",
+            "rows": 553,
+            "observed_team_labels": 18,
+            "missing_fields": {
+              "minutes": 0,
+              "appearances": 0,
+              "goals": 0,
+              "assists": 0,
+              "xg": 28
+            },
+            "invalid_fields": {}
+          },
+          {
+            "league": "FRA-Ligue 1",
+            "season": "2025/26",
+            "expected_teams": 18,
+            "expected_league_matches": 306,
+            "status": "present_not_completeness_verified",
+            "rows": 561,
+            "observed_team_labels": 18,
+            "missing_fields": {
+              "minutes": 0,
+              "appearances": 0,
+              "goals": 0,
+              "assists": 0,
+              "xg": 32
+            },
+            "invalid_fields": {}
+          }
+        ],
+        "duplicate_name_keys": 0,
+        "blank_identity_rows": 0,
+        "invalid_numeric_values": 0,
+        "out_of_scope_rows": 0,
+        "cross_source_counts": {
+          "goals_fb_vs_ss": {
+            "comparable": 5450,
+            "different": 206,
+            "different_multi_club_rows": 198,
+            "max_abs_difference": 20.0
+          },
+          "assists_fb_vs_ss": {
+            "comparable": 5450,
+            "different": 222,
+            "different_multi_club_rows": 172,
+            "max_abs_difference": 9.0
+          }
+        },
+        "limitations": [
+          "Name keys are not verified player identities.",
+          "Source metrics may refer to different club stints; discrepancies are flags, not proof of error.",
+          "Season presence and team counts do not prove complete player coverage.",
+          "Current SoFIFA values/attributes must not be used as historical prediction features.",
+          "Underlying data permissions remain unresolved; not approved for public redistribution or ML."
+        ]
+      }
+    },
+    "transfermarkt": {
+      "files": {
+        "games.csv.gz": {
+          "status": "blocked",
+          "http_status": 403,
+          "url": "https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data/games.csv.gz"
+        }
+      },
+      "status": "unavailable",
+      "coverage": "unverified"
+    }
+  }
+}

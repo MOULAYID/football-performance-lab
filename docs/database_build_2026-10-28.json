@@ -1,0 +1,312 @@
+{
+  "built_at": "2026-10-28T15:01:24.059160+00:00",
+  "duckdb_version": "1.4.3",
+  "counts": {
+    "matches": 8908,
+    "player_match_stats": 272457,
+    "players": 5526,
+    "clubs": 130,
+    "competitions": 5,
+    "player_club_season": 14055,
+    "player_season": 13676
+  },
+  "integrity_checks": {
+    "missing_player_references": 0,
+    "missing_home_clubs": 0,
+    "missing_away_clubs": 0,
+    "missing_competitions": 0,
+    "wrong_historical_club": 0,
+    "negative_statistics": 0,
+    "null_match_scope": 0
+  },
+  "coverage": [
+    {
+      "competition_id": "ES1",
+      "season": 2021,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2021-08-13",
+      "last_match": "2022-05-22"
+    },
+    {
+      "competition_id": "ES1",
+      "season": 2022,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2022-08-12",
+      "last_match": "2023-06-04"
+    },
+    {
+      "competition_id": "ES1",
+      "season": 2023,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2023-08-11",
+      "last_match": "2024-05-26"
+    },
+    {
+      "competition_id": "ES1",
+      "season": 2024,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2024-08-15",
+      "last_match": "2025-05-25"
+    },
+    {
+      "competition_id": "ES1",
+      "season": 2025,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2025-08-15",
+      "last_match": "2026-05-24"
+    },
+    {
+      "competition_id": "FR1",
+      "season": 2021,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2021-08-06",
+      "last_match": "2022-05-21"
+    },
+    {
+      "competition_id": "FR1",
+      "season": 2022,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2022-08-05",
+      "last_match": "2023-06-03"
+    },
+    {
+      "competition_id": "FR1",
+      "season": 2023,
+      "match_count": 306,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 306,
+      "expected_count_matches": true,
+      "first_match": "2023-08-11",
+      "last_match": "2024-05-19"
+    },
+    {
+      "competition_id": "FR1",
+      "season": 2024,
+      "match_count": 306,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 306,
+      "expected_count_matches": true,
+      "first_match": "2024-08-16",
+      "last_match": "2025-05-17"
+    },
+    {
+      "competition_id": "FR1",
+      "season": 2025,
+      "match_count": 306,
+      "matches_missing_appearances": 1,
+      "matches_with_suspect_coverage": 1,
+      "expected_match_count": 306,
+      "expected_count_matches": true,
+      "first_match": "2025-08-15",
+      "last_match": "2026-05-17"
+    },
+    {
+      "competition_id": "GB1",
+      "season": 2021,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2021-08-13",
+      "last_match": "2022-05-22"
+    },
+    {
+      "competition_id": "GB1",
+      "season": 2022,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2022-08-05",
+      "last_match": "2023-05-28"
+    },
+    {
+      "competition_id": "GB1",
+      "season": 2023,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2023-08-11",
+      "last_match": "2024-05-19"
+    },
+    {
+      "competition_id": "GB1",
+      "season": 2024,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2024-08-16",
+      "last_match": "2025-05-25"
+    },
+    {
+      "competition_id": "GB1",
+      "season": 2025,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2025-08-15",
+      "last_match": "2026-05-24"
+    },
+    {
+      "competition_id": "IT1",
+      "season": 2021,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2021-08-21",
+      "last_match": "2022-05-22"
+    },
+    {
+      "competition_id": "IT1",
+      "season": 2022,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2022-08-13",
+      "last_match": "2023-06-04"
+    },
+    {
+      "competition_id": "IT1",
+      "season": 2023,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2023-08-19",
+      "last_match": "2024-06-02"
+    },
+    {
+      "competition_id": "IT1",
+      "season": 2024,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2024-08-17",
+      "last_match": "2025-05-25"
+    },
+    {
+      "competition_id": "IT1",
+      "season": 2025,
+      "match_count": 380,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 380,
+      "expected_count_matches": true,
+      "first_match": "2025-08-23",
+      "last_match": "2026-05-24"
+    },
+    {
+      "competition_id": "L1",
+      "season": 2021,
+      "match_count": 306,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 306,
+      "expected_count_matches": true,
+      "first_match": "2021-08-13",
+      "last_match": "2022-05-14"
+    },
+    {
+      "competition_id": "L1",
+      "season": 2022,
+      "match_count": 306,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 306,
+      "expected_count_matches": true,
+      "first_match": "2022-08-05",
+      "last_match": "2023-05-27"
+    },
+    {
+      "competition_id": "L1",
+      "season": 2023,
+      "match_count": 306,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 306,
+      "expected_count_matches": true,
+      "first_match": "2023-08-18",
+      "last_match": "2024-05-18"
+    },
+    {
+      "competition_id": "L1",
+      "season": 2024,
+      "match_count": 306,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 306,
+      "expected_count_matches": true,
+      "first_match": "2024-08-23",
+      "last_match": "2025-05-17"
+    },
+    {
+      "competition_id": "L1",
+      "season": 2025,
+      "match_count": 306,
+      "matches_missing_appearances": 0,
+      "matches_with_suspect_coverage": 0,
+      "expected_match_count": 306,
+      "expected_count_matches": true,
+      "first_match": "2025-08-22",
+      "last_match": "2026-05-16"
+    }
+  ],
+  "missing_appearance_matches": [
+    [
+      4635303,
+      "FR1",
+      2025,
+      "2026-05-17"
+    ]
+  ],
+  "notes": [
+    "Position and club names are source snapshots, not historical position/name evidence.",
+    "Null metrics remain null; unrecorded matches are never treated as zero.",
+    "All totals are observed records, not guaranteed complete career or award-period totals."
+  ]
+}
